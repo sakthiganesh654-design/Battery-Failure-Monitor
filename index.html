@@ -533,7 +533,7 @@
             animation: pulse-alert 1s infinite;
         }
 
-        /* Fault Card */
+        /* FAULT LOG TABLE STYLES */
         .fault-card .card-header {
             display: flex;
             justify-content: space-between;
@@ -559,10 +559,18 @@
             transform: rotate(180deg);
         }
 
+        .filters-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
         .fault-filters {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
         }
 
         .filter-btn {
@@ -582,80 +590,186 @@
             border-color: var(--primary);
         }
 
-        .fault-list {
-            max-height: 300px;
-            overflow-y: auto;
-            padding-right: 10px;
+        .entries-info {
+            font-size: 0.9rem;
+            color: var(--gray);
         }
 
-        .fault-item {
-            background: var(--light);
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            border-left: 4px solid var(--danger);
-            cursor: pointer;
+        /* Table Styles */
+        .fault-table-container {
+            overflow-x: auto;
+            max-height: 400px;
+            border-radius: 8px;
+            border: 1px solid var(--gray-light);
+        }
+
+        .fault-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        .fault-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .fault-table th {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            padding: 15px 12px;
+            text-align: left;
+            font-size: 0.9rem;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .fault-table th:last-child {
+            border-right: none;
+        }
+
+        .fault-table th i {
+            margin-right: 8px;
+            font-size: 0.9rem;
+        }
+
+        .fault-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--gray-light);
+            font-size: 0.9rem;
+            vertical-align: middle;
+        }
+
+        .fault-table tbody tr {
             transition: var(--transition);
+            cursor: pointer;
         }
 
-        .fault-item:hover {
-            background: #f0f4ff;
-            transform: translateX(5px);
+        .fault-table tbody tr:hover {
+            background-color: rgba(67, 97, 238, 0.05);
         }
 
-        .fault-item.resolved {
-            border-left-color: var(--success);
+        .fault-table tbody tr.resolved {
             opacity: 0.7;
+            background-color: rgba(76, 201, 240, 0.05);
         }
 
-        .fault-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
+        .fault-table tbody tr.active {
+            background-color: rgba(247, 37, 133, 0.05);
         }
 
-        .fault-title {
+        /* Fault Number Cell */
+        .fault-number {
             font-weight: 600;
             color: var(--dark);
+            font-family: 'Roboto', monospace;
+        }
+
+        /* Date Time Cells */
+        .fault-date, .fault-time {
+            font-family: 'Roboto', monospace;
+            white-space: nowrap;
+        }
+
+        .fault-date {
+            color: var(--gray);
+            font-size: 0.85rem;
+        }
+
+        .fault-time {
+            color: var(--dark);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        /* Fault Type Cell */
+        .fault-type {
             display: flex;
             align-items: center;
             gap: 8px;
         }
 
-        .fault-time {
-            font-size: 0.8rem;
-            color: var(--gray);
-            text-align: right;
-            min-width: 120px;
-        }
-
-        .fault-desc {
-            font-size: 0.9rem;
-            color: var(--gray);
-            margin-bottom: 8px;
-        }
-
-        .fault-value {
-            font-size: 0.85rem;
-            color: var(--dark);
-            font-weight: 500;
-            background: rgba(0, 0, 0, 0.05);
-            padding: 4px 8px;
-            border-radius: 4px;
-            display: inline-block;
-            margin-top: 5px;
-        }
-
-        .fault-resolved {
-            font-size: 0.8rem;
-            color: var(--success);
-            margin-top: 8px;
+        .fault-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .fault-type-name {
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        /* Status Cell */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
             gap: 5px;
         }
 
+        .status-badge.active {
+            background-color: rgba(247, 37, 133, 0.1);
+            color: var(--danger);
+        }
+
+        .status-badge.resolved {
+            background-color: rgba(76, 201, 240, 0.1);
+            color: var(--success);
+        }
+
+        /* Actions Cell */
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 0.9rem;
+        }
+
+        .action-btn.view {
+            background: rgba(67, 97, 238, 0.1);
+            color: var(--primary);
+        }
+
+        .action-btn.view:hover {
+            background: rgba(67, 97, 238, 0.2);
+        }
+
+        .action-btn.resolve {
+            background: rgba(76, 201, 240, 0.1);
+            color: var(--success);
+        }
+
+        .action-btn.resolve:hover {
+            background: rgba(76, 201, 240, 0.2);
+        }
+
+        .action-btn.resolve:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Empty State */
         .fault-empty {
             text-align: center;
             padding: 40px 20px;
@@ -860,7 +974,7 @@
             background: white;
             border-radius: var(--border-radius);
             width: 90%;
-            max-width: 500px;
+            max-width: 600px;
             max-height: 90vh;
             overflow-y: auto;
             animation: modalSlide 0.3s ease;
@@ -965,7 +1079,7 @@
         }
 
         .notification.info {
-            border-left-color = var(--info);
+            border-left-color: var(--info);
         }
 
         .notification i {
@@ -1117,6 +1231,15 @@
             .stat-value {
                 font-size: 1.8rem;
             }
+            
+            .filters-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .fault-filters {
+                justify-content: center;
+            }
         }
 
         @media (max-width: 480px) {
@@ -1142,6 +1265,15 @@
             
             .stat-value {
                 font-size: 1.6rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                width: 28px;
+                height: 28px;
             }
         }
     </style>
@@ -1361,7 +1493,7 @@
                     </div>
                 </div>
 
-                <!-- Fault Log -->
+                <!-- Fault Log Table -->
                 <div class="card fault-card">
                     <div class="card-header">
                         <h2><i class="fas fa-exclamation-triangle"></i> Fault Log</h2>
@@ -1370,15 +1502,37 @@
                         </button>
                     </div>
                     <div class="card-content">
-                        <div class="fault-filters">
-                            <button class="filter-btn active" data-filter="all">All</button>
-                            <button class="filter-btn" data-filter="active">Active</button>
-                            <button class="filter-btn" data-filter="resolved">Resolved</button>
+                        <div class="filters-container">
+                            <div class="fault-filters">
+                                <button class="filter-btn active" data-filter="all">All</button>
+                                <button class="filter-btn" data-filter="active">Active</button>
+                                <button class="filter-btn" data-filter="resolved">Resolved</button>
+                            </div>
+                            <div class="entries-info" id="entriesInfo">
+                                Showing 0 entries
+                            </div>
                         </div>
-                        <div class="fault-list" id="faultList">
-                            <div class="fault-empty">
+                        
+                        <div class="fault-table-container" id="faultTableContainer">
+                            <table class="fault-table">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-hashtag"></i> Fault #</th>
+                                        <th><i class="fas fa-calendar-alt"></i> Date</th>
+                                        <th><i class="fas fa-clock"></i> Time</th>
+                                        <th><i class="fas fa-exclamation-circle"></i> Type</th>
+                                        <th><i class="fas fa-info-circle"></i> Status</th>
+                                        <th><i class="fas fa-cog"></i> Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="faultTableBody">
+                                    <!-- Dynamic content will be inserted here -->
+                                </tbody>
+                            </table>
+                            <div class="fault-empty" id="faultEmpty">
                                 <i class="fas fa-check-circle"></i>
                                 <p>No faults detected</p>
+                                <small>System is operating normally</small>
                             </div>
                         </div>
                     </div>
@@ -1512,7 +1666,8 @@
             startTime: Date.now(),
             lastStatsUpdate: Date.now(),
             buzzerActive: false,
-            liveData: null
+            liveData: null,
+            currentFaultNumber: 1 // Start fault numbering from 1
         };
 
         // Charts
@@ -1561,7 +1716,10 @@
             buzzerIndicator: document.getElementById('buzzerIndicator'),
             
             // Fault elements
-            faultList: document.getElementById('faultList'),
+            faultTableContainer: document.getElementById('faultTableContainer'),
+            faultTableBody: document.getElementById('faultTableBody'),
+            faultEmpty: document.getElementById('faultEmpty'),
+            entriesInfo: document.getElementById('entriesInfo'),
             refreshFaults: document.getElementById('refreshFaults'),
             
             // Stats elements
@@ -1583,6 +1741,65 @@
             modalClose: document.querySelector('.modal-close'),
             faultDetailContent: document.getElementById('faultDetailContent'),
             resolveFaultBtn: document.getElementById('resolveFaultBtn')
+        };
+
+        // Fault type configuration
+        const faultTypes = {
+            'HIGH_TEMPERATURE_IR': {
+                icon: 'fas fa-thermometer-full',
+                color: '#f72585',
+                name: 'High IR Temp'
+            },
+            'HIGH_TEMPERATURE_BATTERY': {
+                icon: 'fas fa-fire',
+                color: '#f8961e',
+                name: 'High Battery Temp'
+            },
+            'GAS_LEAK_1': {
+                icon: 'fas fa-wind',
+                color: '#4361ee',
+                name: 'Gas Leak 1'
+            },
+            'GAS_LEAK_2': {
+                icon: 'fas fa-smog',
+                color: '#7209b7',
+                name: 'Gas Leak 2'
+            },
+            'BATTERY_VOLTAGE_FAULT_1': {
+                icon: 'fas fa-bolt',
+                color: '#4cc9f0',
+                name: 'Cell 1 Voltage'
+            },
+            'BATTERY_VOLTAGE_FAULT_2': {
+                icon: 'fas fa-bolt',
+                color: '#4cc9f0',
+                name: 'Cell 2 Voltage'
+            },
+            'BATTERY_VOLTAGE_FAULT_3': {
+                icon: 'fas fa-bolt',
+                color: '#4cc9f0',
+                name: 'Cell 3 Voltage'
+            },
+            'LOW_VOLTAGE_FAULT': {
+                icon: 'fas fa-battery-empty',
+                color: '#f8961e',
+                name: 'Low Voltage'
+            },
+            'HIGH_VOLTAGE_FAULT': {
+                icon: 'fas fa-battery-full',
+                color: '#f72585',
+                name: 'High Voltage'
+            },
+            'GAS_LEAK': {
+                icon: 'fas fa-smog',
+                color: '#4361ee',
+                name: 'Gas Leak'
+            },
+            'OVER_TEMPERATURE': {
+                icon: 'fas fa-thermometer-full',
+                color: '#f72585',
+                name: 'Over Temperature'
+            }
         };
 
         // Initialize the application
@@ -1735,11 +1952,10 @@
             faultLogRef.on('value', (snapshot) => {
                 const faults = snapshot.val();
                 if (faults) {
-                    systemState.faults = Object.entries(faults).map(([key, value]) => {
-                        // Proper timestamp handling
-                        let timestamp;
-                        let resolvedAt = null;
+                    const faultArray = Object.entries(faults).map(([key, value]) => {
+                        let timestamp, resolvedAt = null;
                         
+                        // Parse timestamp
                         if (value.timestamp) {
                             if (typeof value.timestamp === 'number') {
                                 timestamp = new Date(value.timestamp);
@@ -1755,6 +1971,7 @@
                             timestamp = new Date();
                         }
                         
+                        // Parse resolvedAt
                         if (value.resolvedAt) {
                             if (typeof value.resolvedAt === 'number') {
                                 resolvedAt = new Date(value.resolvedAt);
@@ -1774,14 +1991,25 @@
                         };
                     });
                     
+                    // Sort faults by timestamp (newest first) and assign numbers
+                    systemState.faults = faultArray.sort((a, b) => {
+                        const timeA = a.timestamp ? a.timestamp.getTime() : 0;
+                        const timeB = b.timestamp ? b.timestamp.getTime() : 0;
+                        return timeB - timeA;
+                    });
+                    
+                    // Assign fault numbers
+                    systemState.faults.forEach((fault, index) => {
+                        fault.faultNumber = systemState.faults.length - index;
+                    });
+                    
                     console.log(`Loaded ${systemState.faults.length} faults from Firebase`);
-                    console.log("Sample fault:", systemState.faults[0]);
-                    updateFaultList();
+                    updateFaultTable();
                     updateStats();
                 } else {
                     systemState.faults = [];
                     console.log("No faults in database");
-                    updateFaultList();
+                    updateFaultTable();
                     updateStats();
                 }
             }, (error) => {
@@ -1983,11 +2211,10 @@
                 .then(snapshot => {
                     const faults = snapshot.val();
                     if (faults) {
-                        systemState.faults = Object.entries(faults).map(([key, value]) => {
-                            // Proper timestamp handling
-                            let timestamp;
-                            let resolvedAt = null;
+                        const faultArray = Object.entries(faults).map(([key, value]) => {
+                            let timestamp, resolvedAt = null;
                             
+                            // Parse timestamp
                             if (value.timestamp) {
                                 if (typeof value.timestamp === 'number') {
                                     timestamp = new Date(value.timestamp);
@@ -2003,6 +2230,7 @@
                                 timestamp = new Date();
                             }
                             
+                            // Parse resolvedAt
                             if (value.resolvedAt) {
                                 if (typeof value.resolvedAt === 'number') {
                                     resolvedAt = new Date(value.resolvedAt);
@@ -2021,12 +2249,25 @@
                                 resolvedAt: resolvedAt
                             };
                         });
+                        
+                        // Sort faults by timestamp (newest first) and assign numbers
+                        systemState.faults = faultArray.sort((a, b) => {
+                            const timeA = a.timestamp ? a.timestamp.getTime() : 0;
+                            const timeB = b.timestamp ? b.timestamp.getTime() : 0;
+                            return timeB - timeA;
+                        });
+                        
+                        // Assign fault numbers
+                        systemState.faults.forEach((fault, index) => {
+                            fault.faultNumber = systemState.faults.length - index;
+                        });
+                        
                         console.log(`Loaded ${systemState.faults.length} faults`);
                     } else {
                         systemState.faults = [];
                         console.log("No faults found");
                     }
-                    updateFaultList();
+                    updateFaultTable();
                     updateStats();
                 })
                 .catch(error => {
@@ -2035,127 +2276,158 @@
                 });
         }
 
-        // Update fault list
-        function updateFaultList() {
-            const faultList = elements.faultList;
+        // Update fault table
+        function updateFaultTable() {
             const activeFilter = document.querySelector('.filter-btn.active')?.dataset.filter || 'all';
             
-            console.log("Updating fault list:", {
-                totalFaults: systemState.faults.length,
-                filter: activeFilter
-            });
-            
-            if (systemState.faults.length === 0) {
-                faultList.innerHTML = `
-                    <div class="fault-empty">
-                        <i class="fas fa-check-circle"></i>
-                        <p>No faults detected</p>
-                        <small>System is operating normally</small>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Sort faults by timestamp (newest first)
-            const sortedFaults = [...systemState.faults].sort((a, b) => {
-                const timeA = a.timestamp ? a.timestamp.getTime() : 0;
-                const timeB = b.timestamp ? b.timestamp.getTime() : 0;
-                return timeB - timeA;
-            });
-            
             // Filter faults
-            const filteredFaults = sortedFaults.filter(fault => {
+            const filteredFaults = systemState.faults.filter(fault => {
                 if (activeFilter === 'all') return true;
                 if (activeFilter === 'active') return !fault.resolved;
                 if (activeFilter === 'resolved') return fault.resolved;
                 return true;
             });
             
+            // Update entries info
+            elements.entriesInfo.textContent = `Showing ${filteredFaults.length} of ${systemState.faults.length} entries`;
+            
+            // Show/hide empty state
             if (filteredFaults.length === 0) {
-                faultList.innerHTML = `
-                    <div class="fault-empty">
-                        <i class="fas fa-check-circle"></i>
-                        <p>No ${activeFilter === 'active' ? 'active' : 'resolved'} faults</p>
-                    </div>
-                `;
+                elements.faultEmpty.style.display = 'block';
+                elements.faultTableBody.innerHTML = '';
                 return;
             }
             
-            faultList.innerHTML = filteredFaults.map(fault => createFaultElement(fault)).join('');
+            elements.faultEmpty.style.display = 'none';
             
-            // Add click event listeners to fault items
-            document.querySelectorAll('.fault-item').forEach(item => {
-                item.addEventListener('click', () => showFaultDetail(item.dataset.faultId));
+            // Generate table rows
+            elements.faultTableBody.innerHTML = filteredFaults.map(fault => createFaultTableRow(fault)).join('');
+            
+            // Add event listeners to action buttons
+            document.querySelectorAll('.view-fault-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    showFaultDetail(btn.dataset.faultId);
+                });
+            });
+            
+            document.querySelectorAll('.resolve-fault-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    resolveFault(btn.dataset.faultId);
+                });
+            });
+            
+            // Add click event to table rows
+            document.querySelectorAll('.fault-table tbody tr').forEach(row => {
+                row.addEventListener('click', () => {
+                    showFaultDetail(row.dataset.faultId);
+                });
             });
         }
 
-        // Create fault element
-        function createFaultElement(fault) {
-            const faultTypeIcons = {
-                'HIGH_TEMPERATURE_IR': 'fas fa-thermometer-full',
-                'HIGH_TEMPERATURE_BATTERY': 'fas fa-fire',
-                'GAS_LEAK_1': 'fas fa-wind',
-                'GAS_LEAK_2': 'fas fa-smog',
-                'BATTERY_VOLTAGE_FAULT_1': 'fas fa-bolt',
-                'BATTERY_VOLTAGE_FAULT_2': 'fas fa-bolt',
-                'BATTERY_VOLTAGE_FAULT_3': 'fas fa-bolt',
-                'LOW_VOLTAGE_FAULT': 'fas fa-battery-empty',
-                'HIGH_VOLTAGE_FAULT': 'fas fa-battery-full',
-                'GAS_LEAK': 'fas fa-smog',
-                'OVER_TEMPERATURE': 'fas fa-thermometer-full'
+        // Create fault table row
+        function createFaultTableRow(fault) {
+            const faultType = faultTypes[fault.faultType] || {
+                icon: 'fas fa-exclamation-triangle',
+                color: '#f72585',
+                name: fault.faultType || 'Unknown'
             };
             
-            const faultTypeColors = {
-                'HIGH_TEMPERATURE_IR': '#f72585',
-                'HIGH_TEMPERATURE_BATTERY': '#f8961e',
-                'GAS_LEAK_1': '#4361ee',
-                'GAS_LEAK_2': '#7209b7',
-                'BATTERY_VOLTAGE_FAULT_1': '#4cc9f0',
-                'BATTERY_VOLTAGE_FAULT_2': '#4cc9f0',
-                'BATTERY_VOLTAGE_FAULT_3': '#4cc9f0',
-                'LOW_VOLTAGE_FAULT': '#f8961e',
-                'HIGH_VOLTAGE_FAULT': '#f72585',
-                'GAS_LEAK': '#4361ee',
-                'OVER_TEMPERATURE': '#f72585'
-            };
+            const rowClass = fault.resolved ? 'resolved' : 'active';
             
-            const icon = faultTypeIcons[fault.faultType] || 'fas fa-exclamation-triangle';
-            const resolvedClass = fault.resolved ? 'resolved' : '';
-            
-            // Format date and time correctly for list view (relative time)
-            let timeString = 'Just now';
-            let detailedTime = '';
+            // Format date and time
+            let faultDate = 'N/A';
+            let faultTime = 'N/A';
             
             if (fault.timestamp && fault.timestamp instanceof Date && !isNaN(fault.timestamp.getTime())) {
-                const now = new Date();
-                const faultTime = fault.timestamp;
-                const diffMs = now - faultTime;
-                const diffMins = Math.floor(diffMs / 60000);
-                const diffHours = Math.floor(diffMs / 3600000);
-                const diffDays = Math.floor(diffMs / 86400000);
-                
-                // Show relative time for recent faults
-                if (diffMins < 1) {
-                    timeString = 'Just now';
-                } else if (diffMins < 60) {
-                    timeString = `${diffMins}m ago`;
-                } else if (diffHours < 24) {
-                    timeString = `${diffHours}h ago`;
-                } else if (diffDays < 7) {
-                    timeString = `${diffDays}d ago`;
-                } else {
-                    // For older faults, show date
-                    timeString = faultTime.toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric' 
-                    });
-                }
-                
-                // Detailed time for tooltip or detailed view
-                detailedTime = faultTime.toLocaleString('en-US', {
-                    month: 'long',
-                    day: 'numeric',
+                faultDate = fault.timestamp.toLocaleDateString('en-US', {
                     year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                
+                faultTime = fault.timestamp.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            }
+            
+            return `
+                <tr class="${rowClass}" data-fault-id="${fault.id}">
+                    <td>
+                        <div class="fault-number">#${fault.faultNumber || 'N/A'}</div>
+                    </td>
+                    <td>
+                        <div class="fault-date">${faultDate}</div>
+                    </td>
+                    <td>
+                        <div class="fault-time">${faultTime}</div>
+                    </td>
+                    <td>
+                        <div class="fault-type">
+                            <div class="fault-icon" style="background-color: ${faultType.color}">
+                                <i class="${faultType.icon}"></i>
+                            </div>
+                            <span class="fault-type-name">${faultType.name}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="status-badge ${fault.resolved ? 'resolved' : 'active'}">
+                            <i class="fas fa-${fault.resolved ? 'check-circle' : 'exclamation-circle'}"></i>
+                            ${fault.resolved ? 'Resolved' : 'Active'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="action-btn view view-fault-btn" data-fault-id="${fault.id}" title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="action-btn resolve resolve-fault-btn" 
+                                    data-fault-id="${fault.id}" 
+                                    ${fault.resolved ? 'disabled' : ''}
+                                    title="${fault.resolved ? 'Already Resolved' : 'Mark as Resolved'}">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Filter faults
+        function filterFaults(filter) {
+            updateFaultTable();
+        }
+
+        // Show fault detail modal
+        function showFaultDetail(faultId) {
+            const fault = systemState.faults.find(f => f.id === faultId);
+            if (!fault) {
+                showNotification('Fault details not found', 'error');
+                return;
+            }
+            
+            const faultType = faultTypes[fault.faultType] || {
+                name: fault.faultType || 'Unknown',
+                color: '#f72585'
+            };
+            
+            let detectedDate = 'N/A';
+            let detectedTime = 'N/A';
+            let resolvedDate = 'Not resolved';
+            let resolvedTime = '';
+            
+            if (fault.timestamp && fault.timestamp instanceof Date && !isNaN(fault.timestamp.getTime())) {
+                detectedDate = fault.timestamp.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                detectedTime = fault.timestamp.toLocaleTimeString('en-US', {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
@@ -2163,30 +2435,76 @@
                 });
             }
             
-            const borderColor = faultTypeColors[fault.faultType] || '#f72585';
-            
-            // Create fault description based on type
-            let faultDesc = fault.description || getFaultDescription(fault.faultType, fault.value);
-            let faultValueDisplay = '';
-            
-            if (fault.value !== undefined && fault.value !== null) {
-                faultValueDisplay = `<div class="fault-value">Value: ${fault.value}${getFaultUnit(fault.faultType)}</div>`;
+            if (fault.resolvedAt && fault.resolvedAt instanceof Date && !isNaN(fault.resolvedAt.getTime())) {
+                resolvedDate = fault.resolvedAt.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                resolvedTime = fault.resolvedAt.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                });
             }
             
-            return `
-                <div class="fault-item ${resolvedClass}" data-fault-id="${fault.id}" style="border-left-color: ${borderColor}" title="${detailedTime}">
-                    <div class="fault-header">
-                        <div class="fault-title">
-                            <i class="${icon}" style="color: ${borderColor}"></i>
-                            ${getFaultTitle(fault.faultType)}
-                        </div>
-                        <div class="fault-time">${timeString}</div>
+            elements.faultDetailContent.innerHTML = `
+                <div class="fault-detail-content">
+                    <div class="detail-item">
+                        <label>Fault Number:</label>
+                        <strong>#${fault.faultNumber || 'N/A'}</strong>
                     </div>
-                    <div class="fault-desc">${faultDesc}</div>
-                    ${faultValueDisplay}
-                    ${fault.resolved ? '<div class="fault-resolved"><i class="fas fa-check"></i> Resolved</div>' : ''}
+                    <div class="detail-item">
+                        <label>Fault ID:</label>
+                        <strong>${fault.id || 'N/A'}</strong>
+                    </div>
+                    <div class="detail-item">
+                        <label>Fault Type:</label>
+                        <strong style="color: ${faultType.color}">${faultType.name}</strong>
+                    </div>
+                    <div class="detail-item">
+                        <label>Description:</label>
+                        <p>${fault.description || getFaultDescription(fault.faultType, fault.value)}</p>
+                    </div>
+                    ${fault.value ? `
+                    <div class="detail-item">
+                        <label>Measured Value:</label>
+                        <strong>${fault.value} ${getFaultUnit(fault.faultType)}</strong>
+                    </div>
+                    ` : ''}
+                    <div class="detail-item">
+                        <label>Detected Date:</label>
+                        <strong>${detectedDate}</strong>
+                    </div>
+                    <div class="detail-item">
+                        <label>Detected Time:</label>
+                        <strong>${detectedTime}</strong>
+                    </div>
+                    ${fault.resolved ? `
+                    <div class="detail-item">
+                        <label>Resolved Date:</label>
+                        <strong>${resolvedDate}</strong>
+                    </div>
+                    <div class="detail-item">
+                        <label>Resolved Time:</label>
+                        <strong>${resolvedTime}</strong>
+                    </div>
+                    ` : ''}
+                    <div class="detail-item">
+                        <label>Status:</label>
+                        <strong class="${fault.resolved ? 'status-resolved' : 'status-active'}">
+                            ${fault.resolved ? '✓ Resolved' : '⚠ Active'}
+                        </strong>
+                    </div>
                 </div>
             `;
+            
+            elements.resolveFaultBtn.dataset.faultId = faultId;
+            elements.resolveFaultBtn.disabled = fault.resolved;
+            elements.modal.classList.add('active');
         }
 
         // Get fault description
@@ -2220,25 +2538,7 @@
             return desc;
         }
 
-        // Get fault title from type
-        function getFaultTitle(faultType) {
-            const titles = {
-                'HIGH_TEMPERATURE_IR': 'High IR Temperature',
-                'HIGH_TEMPERATURE_BATTERY': 'High Battery Temperature',
-                'GAS_LEAK_1': 'Gas Leak - Sensor 1',
-                'GAS_LEAK_2': 'Gas Leak - Sensor 2',
-                'BATTERY_VOLTAGE_FAULT_1': 'Battery Cell 1 Fault',
-                'BATTERY_VOLTAGE_FAULT_2': 'Battery Cell 2 Fault',
-                'BATTERY_VOLTAGE_FAULT_3': 'Battery Cell 3 Fault',
-                'LOW_VOLTAGE_FAULT': 'Low Voltage Fault',
-                'HIGH_VOLTAGE_FAULT': 'High Voltage Fault',
-                'GAS_LEAK': 'Gas Leak Detected',
-                'OVER_TEMPERATURE': 'Over Temperature'
-            };
-            return titles[faultType] || faultType;
-        }
-
-        // Get fault unit from type
+        // Get fault unit
         function getFaultUnit(faultType) {
             if (faultType.includes('TEMPERATURE')) return '°C';
             if (faultType.includes('VOLTAGE')) return 'V';
@@ -2246,126 +2546,30 @@
             return '';
         }
 
-        // Filter faults
-        function filterFaults(filter) {
-            updateFaultList();
+        // Resolve fault from action button
+        function resolveFault(faultId) {
+            console.log("Resolving fault:", faultId);
+            
+            const now = new Date();
+            const resolvedAt = now.getTime();
+            
+            database.ref(`/fault_log/${faultId}`).update({
+                resolved: true,
+                resolvedAt: resolvedAt,
+                resolvedAtISO: now.toISOString()
+            })
+            .then(() => {
+                showNotification('Fault marked as resolved', 'success');
+                // Reload faults to update the table
+                loadFaults();
+            })
+            .catch(error => {
+                console.error('Error resolving fault:', error);
+                showNotification('Error resolving fault', 'error');
+            });
         }
 
-        // Show fault detail modal with complete date/time information
-        function showFaultDetail(faultId) {
-            const fault = systemState.faults.find(f => f.id === faultId);
-            if (!fault) {
-                showNotification('Fault details not found', 'error');
-                return;
-            }
-            
-            let detectedDate = 'N/A';
-            let detectedTime = 'N/A';
-            let detectedFullDateTime = 'N/A';
-            let resolvedDate = 'Not resolved';
-            let resolvedTime = '';
-            let resolvedFullDateTime = '';
-            
-            if (fault.timestamp && fault.timestamp instanceof Date && !isNaN(fault.timestamp.getTime())) {
-                // Full date format: "Tuesday, January 16, 2024"
-                detectedDate = fault.timestamp.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-                
-                // Time with AM/PM format: "2:30:45 PM"
-                detectedTime = fault.timestamp.toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: true
-                });
-                
-                // Combined full date and time
-                detectedFullDateTime = `${detectedDate} at ${detectedTime}`;
-            }
-            
-            if (fault.resolvedAt && fault.resolvedAt instanceof Date && !isNaN(fault.resolvedAt.getTime())) {
-                resolvedDate = fault.resolvedAt.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-                
-                resolvedTime = fault.resolvedAt.toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: true
-                });
-                
-                resolvedFullDateTime = `${resolvedDate} at ${resolvedTime}`;
-            }
-            
-            elements.faultDetailContent.innerHTML = `
-                <div class="fault-detail-content">
-                    <div class="detail-item">
-                        <label>Fault ID:</label>
-                        <strong>${fault.id || 'N/A'}</strong>
-                    </div>
-                    <div class="detail-item">
-                        <label>Fault Type:</label>
-                        <strong>${getFaultTitle(fault.faultType)}</strong>
-                    </div>
-                    <div class="detail-item">
-                        <label>Description:</label>
-                        <p>${fault.description || getFaultDescription(fault.faultType, fault.value)}</p>
-                    </div>
-                    ${fault.value ? `
-                    <div class="detail-item">
-                        <label>Measured Value:</label>
-                        <strong>${fault.value} ${getFaultUnit(fault.faultType)}</strong>
-                    </div>
-                    ` : ''}
-                    <div class="detail-item">
-                        <label>Detected Date:</label>
-                        <strong>${detectedDate}</strong>
-                    </div>
-                    <div class="detail-item">
-                        <label>Detected Time:</label>
-                        <strong>${detectedTime}</strong>
-                    </div>
-                    <div class="detail-item">
-                        <label>Full Date & Time:</label>
-                        <strong>${detectedFullDateTime}</strong>
-                    </div>
-                    ${fault.resolved ? `
-                    <div class="detail-item">
-                        <label>Resolved Date:</label>
-                        <strong>${resolvedDate}</strong>
-                    </div>
-                    <div class="detail-item">
-                        <label>Resolved Time:</label>
-                        <strong>${resolvedTime}</strong>
-                    </div>
-                    <div class="detail-item">
-                        <label>Full Resolved Date & Time:</label>
-                        <strong>${resolvedFullDateTime}</strong>
-                    </div>
-                    ` : ''}
-                    <div class="detail-item">
-                        <label>Status:</label>
-                        <strong class="${fault.resolved ? 'status-resolved' : 'status-active'}">
-                            ${fault.resolved ? '✓ Resolved' : '⚠ Active'}
-                        </strong>
-                    </div>
-                </div>
-            `;
-            
-            elements.resolveFaultBtn.dataset.faultId = faultId;
-            elements.resolveFaultBtn.disabled = fault.resolved;
-            elements.modal.classList.add('active');
-        }
-
-        // Resolve current fault
+        // Resolve current fault from modal
         function resolveCurrentFault() {
             const faultId = elements.resolveFaultBtn.dataset.faultId;
             if (!faultId) {
@@ -2375,20 +2579,18 @@
             
             console.log("Resolving fault:", faultId);
             
-            // Create proper timestamp
             const now = new Date();
-            const resolvedAt = now.getTime(); // Store as milliseconds
+            const resolvedAt = now.getTime();
             
             database.ref(`/fault_log/${faultId}`).update({
                 resolved: true,
                 resolvedAt: resolvedAt,
-                // Also store as ISO string for human readability
                 resolvedAtISO: now.toISOString()
             })
             .then(() => {
                 showNotification('Fault marked as resolved', 'success');
                 elements.modal.classList.remove('active');
-                // Reload faults to update the list
+                // Reload faults to update the table
                 loadFaults();
             })
             .catch(error => {
