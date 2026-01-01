@@ -239,82 +239,222 @@
             color: var(--dark);
         }
 
-        /* Temperature Card */
+        /* Temperature Card - Unified Design */
         .temp-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 25px;
+            gap: 20px;
         }
 
-        .temp-item {
+        .temp-sensor {
+            background: var(--light);
+            border-radius: 10px;
+            padding: 20px;
             text-align: center;
+            border: 2px solid transparent;
+            transition: var(--transition);
         }
 
-        .temp-label {
-            font-size: 0.9rem;
-            color: var(--gray);
-            margin-bottom: 10px;
+        .temp-sensor:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
         }
 
-        .temp-value {
-            font-size: 2rem;
-            font-weight: 700;
+        .sensor-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             margin-bottom: 15px;
+        }
+
+        .sensor-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .sensor-label {
+            font-size: 1.1rem;
+            font-weight: 600;
             color: var(--dark);
         }
 
+        .temp-display {
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .temp-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--dark);
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .temp-unit {
+            font-size: 1.2rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .temp-status {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--success);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
+        .temp-status.warning {
+            background: var(--warning);
+        }
+
+        .temp-status.danger {
+            background: var(--danger);
+        }
+
         .temp-gauge {
-            height: 10px;
+            height: 8px;
             background: var(--gray-light);
-            border-radius: 5px;
+            border-radius: 4px;
             overflow: hidden;
+            margin-top: 15px;
         }
 
         .gauge-fill {
             height: 100%;
             background: linear-gradient(90deg, var(--success), var(--warning), var(--danger));
-            border-radius: 5px;
+            border-radius: 4px;
             width: 0%;
             transition: width 1s ease;
+        }
+
+        .temp-limits {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--gray);
         }
 
         /* Gas Card */
         .gas-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 25px;
+            gap: 20px;
         }
 
-        .gas-item {
+        .gas-sensor {
+            background: var(--light);
+            border-radius: 10px;
+            padding: 20px;
             text-align: center;
+            border: 2px solid transparent;
+            transition: var(--transition);
+        }
+
+        .gas-sensor:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .gas-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .gas-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #f8961e, #f3722c);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
         }
 
         .gas-label {
-            font-size: 0.9rem;
-            color: var(--gray);
-            margin-bottom: 10px;
-        }
-
-        .gas-value {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
             color: var(--dark);
         }
 
+        .gas-display {
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .gas-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .gas-unit {
+            font-size: 1.2rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .gas-status {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--success);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
+        .gas-status.warning {
+            background: var(--warning);
+        }
+
+        .gas-status.danger {
+            background: var(--danger);
+        }
+
         .gas-indicator {
-            height: 10px;
+            height: 8px;
             background: var(--gray-light);
-            border-radius: 5px;
+            border-radius: 4px;
             overflow: hidden;
+            margin-top: 15px;
         }
 
         .indicator-fill {
             height: 100%;
             background: linear-gradient(90deg, var(--success), var(--warning), var(--danger));
-            border-radius: 5px;
+            border-radius: 4px;
             width: 0%;
             transition: width 1s ease;
+        }
+
+        .gas-limits {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--gray);
         }
 
         /* Controls Card */
@@ -825,8 +965,10 @@
                 grid-template-columns: 1fr;
             }
             
-            .voltage-grid {
-                grid-template-columns: repeat(3, 1fr);
+            .voltage-grid,
+            .temp-grid,
+            .gas-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
 
@@ -860,6 +1002,36 @@
             
             .footer-links {
                 justify-content: center;
+            }
+            
+            .temp-value {
+                font-size: 2.5rem;
+            }
+            
+            .gas-value {
+                font-size: 2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header {
+                padding: 15px;
+            }
+            
+            .card-content {
+                padding: 20px;
+            }
+            
+            .temp-value {
+                font-size: 2rem;
+            }
+            
+            .gas-value {
+                font-size: 1.8rem;
             }
         }
     </style>
@@ -927,24 +1099,55 @@
                     </div>
                 </div>
 
-                <!-- Temperature Monitoring -->
+                <!-- Temperature Monitoring - Unified Design -->
                 <div class="card temp-card">
                     <div class="card-header">
                         <h2><i class="fas fa-thermometer-half"></i> Temperature Monitoring</h2>
                     </div>
                     <div class="card-content">
                         <div class="temp-grid">
-                            <div class="temp-item">
-                                <div class="temp-label">IR Sensor</div>
-                                <div class="temp-value" id="irTemp">-- °C</div>
+                            <!-- IR Sensor -->
+                            <div class="temp-sensor">
+                                <div class="sensor-header">
+                                    <div class="sensor-icon">
+                                        <i class="fas fa-temperature-high"></i>
+                                    </div>
+                                    <div class="sensor-label">IR Sensor</div>
+                                </div>
+                                <div class="temp-display">
+                                    <div class="temp-value" id="irTemp">--</div>
+                                    <div class="temp-unit">°C</div>
+                                </div>
+                                <div class="temp-status" id="irStatus">NORMAL</div>
                                 <div class="temp-gauge">
                                     <div class="gauge-fill" id="irGauge"></div>
                                 </div>
+                                <div class="temp-limits">
+                                    <span>0°C</span>
+                                    <span>60°C</span>
+                                </div>
                             </div>
-                            <div class="temp-item">
-                                <div class="temp-label">Battery Temp</div>
-                                <div class="temp-value" id="batTemp">-- °C</div>
-                                <div class="gauge-fill" id="batGauge"></div>
+
+                            <!-- Battery Temperature -->
+                            <div class="temp-sensor">
+                                <div class="sensor-header">
+                                    <div class="sensor-icon">
+                                        <i class="fas fa-thermometer-full"></i>
+                                    </div>
+                                    <div class="sensor-label">Battery Temp</div>
+                                </div>
+                                <div class="temp-display">
+                                    <div class="temp-value" id="batTemp">--</div>
+                                    <div class="temp-unit">°C</div>
+                                </div>
+                                <div class="temp-status" id="batStatus">NORMAL</div>
+                                <div class="temp-gauge">
+                                    <div class="gauge-fill" id="batGauge"></div>
+                                </div>
+                                <div class="temp-limits">
+                                    <span>0°C</span>
+                                    <span>55°C</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -957,18 +1160,47 @@
                     </div>
                     <div class="card-content">
                         <div class="gas-grid">
-                            <div class="gas-item">
-                                <div class="gas-label">Gas Sensor 1</div>
-                                <div class="gas-value" id="gas1">-- %</div>
+                            <!-- Gas Sensor 1 -->
+                            <div class="gas-sensor">
+                                <div class="gas-header">
+                                    <div class="gas-icon">
+                                        <i class="fas fa-wind"></i>
+                                    </div>
+                                    <div class="gas-label">Gas Sensor 1</div>
+                                </div>
+                                <div class="gas-display">
+                                    <div class="gas-value" id="gas1">--</div>
+                                    <div class="gas-unit">%</div>
+                                </div>
+                                <div class="gas-status" id="gas1Status">SAFE</div>
                                 <div class="gas-indicator">
                                     <div class="indicator-fill" id="gas1Indicator"></div>
                                 </div>
+                                <div class="gas-limits">
+                                    <span>0%</span>
+                                    <span>100%</span>
+                                </div>
                             </div>
-                            <div class="gas-item">
-                                <div class="gas-label">Gas Sensor 2</div>
-                                <div class="gas-value" id="gas2">-- %</div>
+
+                            <!-- Gas Sensor 2 -->
+                            <div class="gas-sensor">
+                                <div class="gas-header">
+                                    <div class="gas-icon">
+                                        <i class="fas fa-smog"></i>
+                                    </div>
+                                    <div class="gas-label">Gas Sensor 2</div>
+                                </div>
+                                <div class="gas-display">
+                                    <div class="gas-value" id="gas2">--</div>
+                                    <div class="gas-unit">%</div>
+                                </div>
+                                <div class="gas-status" id="gas2Status">SAFE</div>
                                 <div class="gas-indicator">
                                     <div class="indicator-fill" id="gas2Indicator"></div>
+                                </div>
+                                <div class="gas-limits">
+                                    <span>0%</span>
+                                    <span>100%</span>
                                 </div>
                             </div>
                         </div>
@@ -1146,15 +1378,19 @@
             progress3: document.getElementById('progress3'),
             totalVoltage: document.getElementById('totalVoltage'),
             
-            // Temperature elements
+            // Temperature elements - Unified design
             irTemp: document.getElementById('irTemp'),
             batTemp: document.getElementById('batTemp'),
+            irStatus: document.getElementById('irStatus'),
+            batStatus: document.getElementById('batStatus'),
             irGauge: document.getElementById('irGauge'),
             batGauge: document.getElementById('batGauge'),
             
-            // Gas elements
+            // Gas elements - Unified design
             gas1: document.getElementById('gas1'),
             gas2: document.getElementById('gas2'),
+            gas1Status: document.getElementById('gas1Status'),
+            gas2Status: document.getElementById('gas2Status'),
             gas1Indicator: document.getElementById('gas1Indicator'),
             gas2Indicator: document.getElementById('gas2Indicator'),
             
@@ -1303,37 +1539,78 @@
             updateElementColor(elements.cell3, bat3, 3.0, 4.25);
         }
 
-        // Update temperature data
+        // Update temperature data - Unified design
         function updateTemperatureData(data) {
             const irTemp = data.ir_temp_c || 0;
             const batTemp = data.battery_temp_c || 0;
             
-            elements.irTemp.textContent = irTemp.toFixed(1) + ' °C';
-            elements.batTemp.textContent = batTemp.toFixed(1) + ' °C';
+            // Update temperature values
+            elements.irTemp.textContent = irTemp.toFixed(1);
+            elements.batTemp.textContent = batTemp.toFixed(1);
             
             // Update gauges (assuming 0-100°C range)
-            elements.irGauge.style.width = Math.min(irTemp, 100) + '%';
-            elements.batGauge.style.width = Math.min(batTemp, 100) + '%';
+            elements.irGauge.style.width = Math.min((irTemp / 100) * 100, 100) + '%';
+            elements.batGauge.style.width = Math.min((batTemp / 100) * 100, 100) + '%';
             
-            // Change color based on temperature
-            updateElementColor(elements.irTemp, irTemp, 0, 60);
-            updateElementColor(elements.batTemp, batTemp, 0, 55);
+            // Update status and color for IR Sensor
+            updateTemperatureStatus(elements.irTemp, elements.irStatus, irTemp, 60);
+            
+            // Update status and color for Battery Temp
+            updateTemperatureStatus(elements.batTemp, elements.batStatus, batTemp, 55);
         }
 
-        // Update gas data
+        // Update temperature status
+        function updateTemperatureStatus(element, statusElement, temp, limit) {
+            // Change color based on temperature
+            if (temp < limit * 0.7) {
+                element.style.color = '#4cc9f0'; // Safe
+                statusElement.textContent = 'NORMAL';
+                statusElement.className = 'temp-status';
+            } else if (temp < limit * 0.9) {
+                element.style.color = '#f8961e'; // Warning
+                statusElement.textContent = 'WARNING';
+                statusElement.className = 'temp-status warning';
+            } else {
+                element.style.color = '#f72585'; // Danger
+                statusElement.textContent = 'ALERT';
+                statusElement.className = 'temp-status danger';
+            }
+        }
+
+        // Update gas data - Unified design
         function updateGasData(data) {
             const gas1 = data.gas1_percent || 0;
             const gas2 = data.gas2_percent || 0;
             
-            elements.gas1.textContent = gas1 + ' %';
-            elements.gas2.textContent = gas2 + ' %';
+            elements.gas1.textContent = gas1;
+            elements.gas2.textContent = gas2;
             
             elements.gas1Indicator.style.width = gas1 + '%';
             elements.gas2Indicator.style.width = gas2 + '%';
             
-            // Change color based on gas level (assuming 50% threshold)
-            updateElementColor(elements.gas1, gas1, 0, 50);
-            updateElementColor(elements.gas2, gas2, 0, 50);
+            // Update status and color for Gas Sensor 1
+            updateGasStatus(elements.gas1, elements.gas1Status, gas1, 50);
+            
+            // Update status and color for Gas Sensor 2
+            updateGasStatus(elements.gas2, elements.gas2Status, gas2, 50);
+        }
+
+        // Update gas status
+        function updateGasStatus(element, statusElement, gasLevel, limit) {
+            // Change color based on gas level
+            if (gasLevel < limit * 0.5) {
+                element.style.color = '#4cc9f0'; // Safe
+                statusElement.textContent = 'SAFE';
+                statusElement.className = 'gas-status';
+            } else if (gasLevel < limit * 0.8) {
+                element.style.color = '#f8961e'; // Warning
+                statusElement.textContent = 'WARNING';
+                statusElement.className = 'gas-status warning';
+            } else {
+                element.style.color = '#f72585'; // Danger
+                statusElement.textContent = 'ALERT';
+                statusElement.className = 'gas-status danger';
+            }
         }
 
         // Update control data
