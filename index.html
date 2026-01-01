@@ -626,6 +626,8 @@
         .fault-time {
             font-size: 0.8rem;
             color: var(--gray);
+            text-align: right;
+            min-width: 120px;
         }
 
         .fault-desc {
@@ -638,6 +640,20 @@
             font-size: 0.85rem;
             color: var(--dark);
             font-weight: 500;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .fault-resolved {
+            font-size: 0.8rem;
+            color: var(--success);
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .fault-empty {
@@ -949,7 +965,7 @@
         }
 
         .notification.info {
-            border-left-color: var(--info);
+            border-left-color = var(--info);
         }
 
         .notification i {
@@ -1719,15 +1735,52 @@
             faultLogRef.on('value', (snapshot) => {
                 const faults = snapshot.val();
                 if (faults) {
-                    // Convert Firebase object to array with proper IDs
-                    systemState.faults = Object.entries(faults).map(([key, value]) => ({
-                        id: key,
-                        ...value,
-                        // Ensure timestamp is properly handled
-                        timestamp: value.timestamp ? new Date(value.timestamp) : new Date(),
-                        resolvedAt: value.resolvedAt ? new Date(value.resolvedAt) : null
-                    }));
+                    systemState.faults = Object.entries(faults).map(([key, value]) => {
+                        // IMPORTANT FIX: Properly handle timestamps
+                        let timestamp;
+                        let resolvedAt = null;
+                        
+                        // Handle timestamp - convert from milliseconds or string
+                        if (value.timestamp) {
+                            if (typeof value.timestamp === 'number') {
+                                // If it's a number (milliseconds since epoch)
+                                timestamp = new Date(value.timestamp);
+                            } else if (typeof value.timestamp === 'string') {
+                                // If it's a string, try to parse it
+                                const parsed = Date.parse(value.timestamp);
+                                timestamp = isNaN(parsed) ? new Date() : new Date(parsed);
+                            } else if (value.timestamp && typeof value.timestamp === 'object' && value.timestamp._seconds) {
+                                // Firebase timestamp object
+                                timestamp = new Date(value.timestamp._seconds * 1000);
+                            } else {
+                                timestamp = new Date();
+                            }
+                        } else {
+                            timestamp = new Date();
+                        }
+                        
+                        // Handle resolvedAt similarly
+                        if (value.resolvedAt) {
+                            if (typeof value.resolvedAt === 'number') {
+                                resolvedAt = new Date(value.resolvedAt);
+                            } else if (typeof value.resolvedAt === 'string') {
+                                const parsed = Date.parse(value.resolvedAt);
+                                resolvedAt = isNaN(parsed) ? null : new Date(parsed);
+                            } else if (value.resolvedAt && typeof value.resolvedAt === 'object' && value.resolvedAt._seconds) {
+                                resolvedAt = new Date(value.resolvedAt._seconds * 1000);
+                            }
+                        }
+                        
+                        return {
+                            id: key,
+                            ...value,
+                            timestamp: timestamp,
+                            resolvedAt: resolvedAt
+                        };
+                    });
+                    
                     console.log(`Loaded ${systemState.faults.length} faults from Firebase`);
+                    console.log("Sample fault:", systemState.faults[0]);
                     updateFaultList();
                     updateStats();
                 } else {
@@ -1756,7 +1809,7 @@
             // Update gas data
             updateGasData(data);
             
-            // Update control data (FIXED BUZZER STATUS)
+            // Update control data
             updateControlData(data);
             
             // Update statistics
@@ -1863,7 +1916,7 @@
             }
         }
 
-        // Update control data - FIXED BUZZER STATUS
+        // Update control data
         function updateControlData(data) {
             const fanSpeed = data.fan_speed_percent || 0;
             const relayStatus = data.relay_status === 'ON';
@@ -1872,14 +1925,6 @@
             elements.fanSpeed.textContent = fanSpeed + ' %';
             elements.relayStatus.textContent = relayStatus ? 'ON' : 'OFF';
             elements.buzzerStatus.textContent = buzzerStatus ? 'ACTIVE' : 'INACTIVE';
-            
-            console.log("Control Update:", {
-                fanSpeed,
-                relayStatus,
-                buzzerStatus,
-                buzzer_status: data.buzzer_status,
-                system_alert: data.system_alert
-            });
             
             // Update animations and indicators
             if (fanSpeed > 0) {
@@ -1918,7 +1963,7 @@
                 } else if (timeDiff < 3600) {
                     elements.lastUpdate.textContent = `Updated: ${Math.floor(timeDiff / 60)} minutes ago`;
                 } else {
-                    elements.lastUpdate.textContent = `Updated: ${systemState.lastUpdate.toLocaleTimeString()}`;
+                    elements.lastUpdate.textContent = `Updated: ${systemState.lastUpdate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
                 }
             }
         }
@@ -1943,14 +1988,44 @@
                 .then(snapshot => {
                     const faults = snapshot.val();
                     if (faults) {
-                        // Convert Firebase object to array with proper IDs
-                        systemState.faults = Object.entries(faults).map(([key, value]) => ({
-                            id: key,
-                            ...value,
-                            // Ensure timestamp is properly handled
-                            timestamp: value.timestamp ? new Date(value.timestamp) : new Date(),
-                            resolvedAt: value.resolvedAt ? new Date(value.resolvedAt) : null
-                        }));
+                        systemState.faults = Object.entries(faults).map(([key, value]) => {
+                            // Proper timestamp handling
+                            let timestamp;
+                            let resolvedAt = null;
+                            
+                            if (value.timestamp) {
+                                if (typeof value.timestamp === 'number') {
+                                    timestamp = new Date(value.timestamp);
+                                } else if (typeof value.timestamp === 'string') {
+                                    const parsed = Date.parse(value.timestamp);
+                                    timestamp = isNaN(parsed) ? new Date() : new Date(parsed);
+                                } else if (value.timestamp && typeof value.timestamp === 'object' && value.timestamp._seconds) {
+                                    timestamp = new Date(value.timestamp._seconds * 1000);
+                                } else {
+                                    timestamp = new Date();
+                                }
+                            } else {
+                                timestamp = new Date();
+                            }
+                            
+                            if (value.resolvedAt) {
+                                if (typeof value.resolvedAt === 'number') {
+                                    resolvedAt = new Date(value.resolvedAt);
+                                } else if (typeof value.resolvedAt === 'string') {
+                                    const parsed = Date.parse(value.resolvedAt);
+                                    resolvedAt = isNaN(parsed) ? null : new Date(parsed);
+                                } else if (value.resolvedAt && typeof value.resolvedAt === 'object' && value.resolvedAt._seconds) {
+                                    resolvedAt = new Date(value.resolvedAt._seconds * 1000);
+                                }
+                            }
+                            
+                            return {
+                                id: key,
+                                ...value,
+                                timestamp: timestamp,
+                                resolvedAt: resolvedAt
+                            };
+                        });
                         console.log(`Loaded ${systemState.faults.length} faults`);
                     } else {
                         systemState.faults = [];
@@ -1988,8 +2063,8 @@
             
             // Sort faults by timestamp (newest first)
             const sortedFaults = [...systemState.faults].sort((a, b) => {
-                const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-                const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+                const timeA = a.timestamp ? a.timestamp.getTime() : 0;
+                const timeB = b.timestamp ? b.timestamp.getTime() : 0;
                 return timeB - timeA;
             });
             
@@ -2019,7 +2094,7 @@
             });
         }
 
-        // Create fault element with improved date/time handling
+        // Create fault element
         function createFaultElement(fault) {
             const faultTypeIcons = {
                 'HIGH_TEMPERATURE_IR': 'fas fa-thermometer-full',
@@ -2028,7 +2103,11 @@
                 'GAS_LEAK_2': 'fas fa-smog',
                 'BATTERY_VOLTAGE_FAULT_1': 'fas fa-bolt',
                 'BATTERY_VOLTAGE_FAULT_2': 'fas fa-bolt',
-                'BATTERY_VOLTAGE_FAULT_3': 'fas fa-bolt'
+                'BATTERY_VOLTAGE_FAULT_3': 'fas fa-bolt',
+                'LOW_VOLTAGE_FAULT': 'fas fa-battery-empty',
+                'HIGH_VOLTAGE_FAULT': 'fas fa-battery-full',
+                'GAS_LEAK': 'fas fa-smog',
+                'OVER_TEMPERATURE': 'fas fa-thermometer-full'
             };
             
             const faultTypeColors = {
@@ -2038,39 +2117,29 @@
                 'GAS_LEAK_2': '#7209b7',
                 'BATTERY_VOLTAGE_FAULT_1': '#4cc9f0',
                 'BATTERY_VOLTAGE_FAULT_2': '#4cc9f0',
-                'BATTERY_VOLTAGE_FAULT_3': '#4cc9f0'
+                'BATTERY_VOLTAGE_FAULT_3': '#4cc9f0',
+                'LOW_VOLTAGE_FAULT': '#f8961e',
+                'HIGH_VOLTAGE_FAULT': '#f72585',
+                'GAS_LEAK': '#4361ee',
+                'OVER_TEMPERATURE': '#f72585'
             };
             
             const icon = faultTypeIcons[fault.faultType] || 'fas fa-exclamation-triangle';
             const resolvedClass = fault.resolved ? 'resolved' : '';
             
-            // Handle date/time properly
-            let date;
-            let timeString;
+            // Format date and time correctly
+            let timeString = 'Just now';
+            let detailedTime = '';
             
-            try {
-                if (fault.timestamp instanceof Date) {
-                    date = fault.timestamp;
-                } else if (typeof fault.timestamp === 'string') {
-                    date = new Date(fault.timestamp);
-                } else if (typeof fault.timestamp === 'number') {
-                    date = new Date(fault.timestamp);
-                } else {
-                    date = new Date();
-                }
-                
-                // Check if date is valid
-                if (isNaN(date.getTime())) {
-                    date = new Date();
-                }
-                
-                // Format date and time
+            if (fault.timestamp && fault.timestamp instanceof Date && !isNaN(fault.timestamp.getTime())) {
                 const now = new Date();
-                const diffMs = now - date;
+                const faultTime = fault.timestamp;
+                const diffMs = now - faultTime;
                 const diffMins = Math.floor(diffMs / 60000);
                 const diffHours = Math.floor(diffMs / 3600000);
                 const diffDays = Math.floor(diffMs / 86400000);
                 
+                // Show relative time for recent faults
                 if (diffMins < 1) {
                     timeString = 'Just now';
                 } else if (diffMins < 60) {
@@ -2080,23 +2149,36 @@
                 } else if (diffDays < 7) {
                     timeString = `${diffDays}d ago`;
                 } else {
-                    timeString = date.toLocaleDateString('en-US', { 
+                    // For older faults, show date
+                    timeString = faultTime.toLocaleDateString('en-US', { 
                         month: 'short', 
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
+                        day: 'numeric' 
                     });
                 }
-            } catch (error) {
-                console.error('Error parsing date:', error);
-                date = new Date();
-                timeString = date.toLocaleTimeString();
+                
+                // Detailed time for tooltip or detailed view
+                detailedTime = faultTime.toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
             }
             
             const borderColor = faultTypeColors[fault.faultType] || '#f72585';
             
+            // Create fault description based on type
+            let faultDesc = fault.description || getFaultDescription(fault.faultType, fault.value);
+            let faultValueDisplay = '';
+            
+            if (fault.value !== undefined && fault.value !== null) {
+                faultValueDisplay = `<div class="fault-value">Value: ${fault.value}${getFaultUnit(fault.faultType)}</div>`;
+            }
+            
             return `
-                <div class="fault-item ${resolvedClass}" data-fault-id="${fault.id}" style="border-left-color: ${borderColor}">
+                <div class="fault-item ${resolvedClass}" data-fault-id="${fault.id}" style="border-left-color: ${borderColor}" title="${detailedTime}">
                     <div class="fault-header">
                         <div class="fault-title">
                             <i class="${icon}" style="color: ${borderColor}"></i>
@@ -2104,11 +2186,42 @@
                         </div>
                         <div class="fault-time">${timeString}</div>
                     </div>
-                    <div class="fault-desc">${fault.description || 'No description available'}</div>
-                    ${fault.value ? `<div class="fault-value">Value: ${fault.value}${getFaultUnit(fault.faultType)}</div>` : ''}
+                    <div class="fault-desc">${faultDesc}</div>
+                    ${faultValueDisplay}
                     ${fault.resolved ? '<div class="fault-resolved"><i class="fas fa-check"></i> Resolved</div>' : ''}
                 </div>
             `;
+        }
+
+        // Get fault description
+        function getFaultDescription(faultType, value) {
+            const descriptions = {
+                'HIGH_TEMPERATURE_IR': `IR Temperature exceeded limit: 60.00°C`,
+                'HIGH_TEMPERATURE_BATTERY': `Battery Temperature exceeded limit: 55.00°C`,
+                'GAS_LEAK_1': `Gas concentration exceeded safe limit`,
+                'GAS_LEAK_2': `Gas concentration exceeded safe limit`,
+                'BATTERY_VOLTAGE_FAULT_1': `Battery Cell 1 voltage out of range`,
+                'BATTERY_VOLTAGE_FAULT_2': `Battery Cell 2 voltage out of range`,
+                'BATTERY_VOLTAGE_FAULT_3': `Battery Cell 3 voltage out of range`,
+                'LOW_VOLTAGE_FAULT': `Battery voltage below minimum threshold`,
+                'HIGH_VOLTAGE_FAULT': `Battery voltage above maximum threshold`,
+                'GAS_LEAK': `Gas leak detected in battery compartment`,
+                'OVER_TEMPERATURE': `Temperature above safety threshold`
+            };
+            
+            let desc = descriptions[faultType] || 'System fault detected';
+            
+            if (value !== undefined && value !== null) {
+                if (faultType.includes('TEMPERATURE')) {
+                    desc += ` (Measured: ${value}°C)`;
+                } else if (faultType.includes('VOLTAGE')) {
+                    desc += ` (Measured: ${value}V)`;
+                } else if (faultType.includes('GAS')) {
+                    desc += ` (Level: ${value}%)`;
+                }
+            }
+            
+            return desc;
         }
 
         // Get fault title from type
@@ -2120,7 +2233,11 @@
                 'GAS_LEAK_2': 'Gas Leak - Sensor 2',
                 'BATTERY_VOLTAGE_FAULT_1': 'Battery Cell 1 Fault',
                 'BATTERY_VOLTAGE_FAULT_2': 'Battery Cell 2 Fault',
-                'BATTERY_VOLTAGE_FAULT_3': 'Battery Cell 3 Fault'
+                'BATTERY_VOLTAGE_FAULT_3': 'Battery Cell 3 Fault',
+                'LOW_VOLTAGE_FAULT': 'Low Voltage Fault',
+                'HIGH_VOLTAGE_FAULT': 'High Voltage Fault',
+                'GAS_LEAK': 'Gas Leak Detected',
+                'OVER_TEMPERATURE': 'Over Temperature'
             };
             return titles[faultType] || faultType;
         }
@@ -2129,7 +2246,7 @@
         function getFaultUnit(faultType) {
             if (faultType.includes('TEMPERATURE')) return '°C';
             if (faultType.includes('VOLTAGE')) return 'V';
-            if (faultType.includes('GAS')) return ' units';
+            if (faultType.includes('GAS')) return '%';
             return '';
         }
 
@@ -2138,7 +2255,7 @@
             updateFaultList();
         }
 
-        // Show fault detail modal with improved date/time handling
+        // Show fault detail modal
         function showFaultDetail(faultId) {
             const fault = systemState.faults.find(f => f.id === faultId);
             if (!fault) {
@@ -2146,49 +2263,39 @@
                 return;
             }
             
-            // Handle dates properly
-            let date, resolvedDate;
             let dateString = 'N/A';
-            let resolvedDateString = 'N/A';
+            let timeString = 'N/A';
+            let resolvedDateString = 'Not resolved';
+            let resolvedTimeString = '';
             
-            try {
-                if (fault.timestamp instanceof Date) {
-                    date = fault.timestamp;
-                } else if (typeof fault.timestamp === 'string' || typeof fault.timestamp === 'number') {
-                    date = new Date(fault.timestamp);
-                }
-                
-                if (date && !isNaN(date.getTime())) {
-                    dateString = date.toLocaleString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit'
-                    });
-                }
-                
-                if (fault.resolvedAt) {
-                    if (fault.resolvedAt instanceof Date) {
-                        resolvedDate = fault.resolvedAt;
-                    } else if (typeof fault.resolvedAt === 'string' || typeof fault.resolvedAt === 'number') {
-                        resolvedDate = new Date(fault.resolvedAt);
-                    }
-                    
-                    if (resolvedDate && !isNaN(resolvedDate.getTime())) {
-                        resolvedDateString = resolvedDate.toLocaleString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit'
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error parsing dates in detail view:', error);
+            if (fault.timestamp && fault.timestamp instanceof Date && !isNaN(fault.timestamp.getTime())) {
+                dateString = fault.timestamp.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                timeString = fault.timestamp.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                });
+            }
+            
+            if (fault.resolvedAt && fault.resolvedAt instanceof Date && !isNaN(fault.resolvedAt.getTime())) {
+                resolvedDateString = fault.resolvedAt.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                resolvedTimeString = fault.resolvedAt.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                });
             }
             
             elements.faultDetailContent.innerHTML = `
@@ -2203,7 +2310,7 @@
                     </div>
                     <div class="detail-item">
                         <label>Description:</label>
-                        <p>${fault.description || 'No description available'}</p>
+                        <p>${fault.description || getFaultDescription(fault.faultType, fault.value)}</p>
                     </div>
                     ${fault.value ? `
                     <div class="detail-item">
@@ -2212,19 +2319,27 @@
                     </div>
                     ` : ''}
                     <div class="detail-item">
-                        <label>Detected At:</label>
+                        <label>Detected Date:</label>
                         <strong>${dateString}</strong>
                     </div>
-                    ${fault.resolvedAt ? `
                     <div class="detail-item">
-                        <label>Resolved At:</label>
+                        <label>Detected Time:</label>
+                        <strong>${timeString}</strong>
+                    </div>
+                    ${fault.resolved ? `
+                    <div class="detail-item">
+                        <label>Resolved Date:</label>
                         <strong>${resolvedDateString}</strong>
+                    </div>
+                    <div class="detail-item">
+                        <label>Resolved Time:</label>
+                        <strong>${resolvedTimeString}</strong>
                     </div>
                     ` : ''}
                     <div class="detail-item">
                         <label>Status:</label>
                         <strong class="${fault.resolved ? 'status-resolved' : 'status-active'}">
-                            ${fault.resolved ? 'Resolved' : 'Active'}
+                            ${fault.resolved ? '✓ Resolved' : '⚠ Active'}
                         </strong>
                     </div>
                 </div>
@@ -2235,7 +2350,7 @@
             elements.modal.classList.add('active');
         }
 
-        // Resolve current fault with proper timestamp
+        // Resolve current fault
         function resolveCurrentFault() {
             const faultId = elements.resolveFaultBtn.dataset.faultId;
             if (!faultId) {
@@ -2245,15 +2360,15 @@
             
             console.log("Resolving fault:", faultId);
             
-            // Create a proper ISO timestamp
+            // Create proper timestamp
             const now = new Date();
-            const resolvedAt = now.toISOString();
+            const resolvedAt = now.getTime(); // Store as milliseconds
             
             database.ref(`/fault_log/${faultId}`).update({
                 resolved: true,
                 resolvedAt: resolvedAt,
-                // Also update with server timestamp if needed
-                serverResolvedAt: firebase.database.ServerValue.TIMESTAMP
+                // Also store as ISO string for human readability
+                resolvedAtISO: now.toISOString()
             })
             .then(() => {
                 showNotification('Fault marked as resolved', 'success');
@@ -2362,20 +2477,10 @@
             
             const faultsToday = systemState.faults.filter(fault => {
                 try {
-                    let faultDate;
-                    if (fault.timestamp instanceof Date) {
-                        faultDate = fault.timestamp;
-                    } else if (typeof fault.timestamp === 'string' || typeof fault.timestamp === 'number') {
-                        faultDate = new Date(fault.timestamp);
-                    } else {
+                    if (!fault.timestamp || !(fault.timestamp instanceof Date) || isNaN(fault.timestamp.getTime())) {
                         return false;
                     }
-                    
-                    if (isNaN(faultDate.getTime())) {
-                        return false;
-                    }
-                    
-                    return faultDate >= today;
+                    return fault.timestamp >= today;
                 } catch (error) {
                     console.error('Error checking fault date:', error);
                     return false;
