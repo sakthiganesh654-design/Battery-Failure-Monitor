@@ -1719,7 +1719,14 @@
             faultLogRef.on('value', (snapshot) => {
                 const faults = snapshot.val();
                 if (faults) {
-                    systemState.faults = Object.values(faults);
+                    // Convert Firebase object to array with proper IDs
+                    systemState.faults = Object.entries(faults).map(([key, value]) => ({
+                        id: key,
+                        ...value,
+                        // Ensure timestamp is properly handled
+                        timestamp: value.timestamp ? new Date(value.timestamp) : new Date(),
+                        resolvedAt: value.resolvedAt ? new Date(value.resolvedAt) : null
+                    }));
                     console.log(`Loaded ${systemState.faults.length} faults from Firebase`);
                     updateFaultList();
                     updateStats();
@@ -1936,7 +1943,14 @@
                 .then(snapshot => {
                     const faults = snapshot.val();
                     if (faults) {
-                        systemState.faults = Object.values(faults);
+                        // Convert Firebase object to array with proper IDs
+                        systemState.faults = Object.entries(faults).map(([key, value]) => ({
+                            id: key,
+                            ...value,
+                            // Ensure timestamp is properly handled
+                            timestamp: value.timestamp ? new Date(value.timestamp) : new Date(),
+                            resolvedAt: value.resolvedAt ? new Date(value.resolvedAt) : null
+                        }));
                         console.log(`Loaded ${systemState.faults.length} faults`);
                     } else {
                         systemState.faults = [];
@@ -1974,8 +1988,8 @@
             
             // Sort faults by timestamp (newest first)
             const sortedFaults = [...systemState.faults].sort((a, b) => {
-                const timeA = new Date(a.timestamp || 0).getTime();
-                const timeB = new Date(b.timestamp || 0).getTime();
+                const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+                const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
                 return timeB - timeA;
             });
             
@@ -2005,7 +2019,7 @@
             });
         }
 
-        // Create fault element
+        // Create fault element with improved date/time handling
         function createFaultElement(fault) {
             const faultTypeIcons = {
                 'HIGH_TEMPERATURE_IR': 'fas fa-thermometer-full',
@@ -2029,8 +2043,56 @@
             
             const icon = faultTypeIcons[fault.faultType] || 'fas fa-exclamation-triangle';
             const resolvedClass = fault.resolved ? 'resolved' : '';
-            const date = fault.timestamp ? new Date(fault.timestamp) : new Date();
-            const timeString = date.toLocaleString();
+            
+            // Handle date/time properly
+            let date;
+            let timeString;
+            
+            try {
+                if (fault.timestamp instanceof Date) {
+                    date = fault.timestamp;
+                } else if (typeof fault.timestamp === 'string') {
+                    date = new Date(fault.timestamp);
+                } else if (typeof fault.timestamp === 'number') {
+                    date = new Date(fault.timestamp);
+                } else {
+                    date = new Date();
+                }
+                
+                // Check if date is valid
+                if (isNaN(date.getTime())) {
+                    date = new Date();
+                }
+                
+                // Format date and time
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+                
+                if (diffMins < 1) {
+                    timeString = 'Just now';
+                } else if (diffMins < 60) {
+                    timeString = `${diffMins}m ago`;
+                } else if (diffHours < 24) {
+                    timeString = `${diffHours}h ago`;
+                } else if (diffDays < 7) {
+                    timeString = `${diffDays}d ago`;
+                } else {
+                    timeString = date.toLocaleDateString('en-US', { 
+                        month: 'short', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+            } catch (error) {
+                console.error('Error parsing date:', error);
+                date = new Date();
+                timeString = date.toLocaleTimeString();
+            }
+            
             const borderColor = faultTypeColors[fault.faultType] || '#f72585';
             
             return `
@@ -2076,7 +2138,7 @@
             updateFaultList();
         }
 
-        // Show fault detail modal
+        // Show fault detail modal with improved date/time handling
         function showFaultDetail(faultId) {
             const fault = systemState.faults.find(f => f.id === faultId);
             if (!fault) {
@@ -2084,8 +2146,50 @@
                 return;
             }
             
-            const date = new Date(fault.timestamp);
-            const resolvedDate = fault.resolvedAt ? new Date(fault.resolvedAt) : null;
+            // Handle dates properly
+            let date, resolvedDate;
+            let dateString = 'N/A';
+            let resolvedDateString = 'N/A';
+            
+            try {
+                if (fault.timestamp instanceof Date) {
+                    date = fault.timestamp;
+                } else if (typeof fault.timestamp === 'string' || typeof fault.timestamp === 'number') {
+                    date = new Date(fault.timestamp);
+                }
+                
+                if (date && !isNaN(date.getTime())) {
+                    dateString = date.toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                }
+                
+                if (fault.resolvedAt) {
+                    if (fault.resolvedAt instanceof Date) {
+                        resolvedDate = fault.resolvedAt;
+                    } else if (typeof fault.resolvedAt === 'string' || typeof fault.resolvedAt === 'number') {
+                        resolvedDate = new Date(fault.resolvedAt);
+                    }
+                    
+                    if (resolvedDate && !isNaN(resolvedDate.getTime())) {
+                        resolvedDateString = resolvedDate.toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error parsing dates in detail view:', error);
+            }
             
             elements.faultDetailContent.innerHTML = `
                 <div class="fault-detail-content">
@@ -2109,12 +2213,12 @@
                     ` : ''}
                     <div class="detail-item">
                         <label>Detected At:</label>
-                        <strong>${date.toLocaleString()}</strong>
+                        <strong>${dateString}</strong>
                     </div>
-                    ${resolvedDate ? `
+                    ${fault.resolvedAt ? `
                     <div class="detail-item">
                         <label>Resolved At:</label>
-                        <strong>${resolvedDate.toLocaleString()}</strong>
+                        <strong>${resolvedDateString}</strong>
                     </div>
                     ` : ''}
                     <div class="detail-item">
@@ -2131,7 +2235,7 @@
             elements.modal.classList.add('active');
         }
 
-        // Resolve current fault
+        // Resolve current fault with proper timestamp
         function resolveCurrentFault() {
             const faultId = elements.resolveFaultBtn.dataset.faultId;
             if (!faultId) {
@@ -2141,9 +2245,15 @@
             
             console.log("Resolving fault:", faultId);
             
+            // Create a proper ISO timestamp
+            const now = new Date();
+            const resolvedAt = now.toISOString();
+            
             database.ref(`/fault_log/${faultId}`).update({
                 resolved: true,
-                resolvedAt: new Date().toISOString()
+                resolvedAt: resolvedAt,
+                // Also update with server timestamp if needed
+                serverResolvedAt: firebase.database.ServerValue.TIMESTAMP
             })
             .then(() => {
                 showNotification('Fault marked as resolved', 'success');
@@ -2246,8 +2356,32 @@
 
         // Update stats
         function updateStats() {
-            // Update faults today from live data
-            const faultsToday = systemState.liveData?.stats?.faults_today || 0;
+            // Calculate faults for today
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const faultsToday = systemState.faults.filter(fault => {
+                try {
+                    let faultDate;
+                    if (fault.timestamp instanceof Date) {
+                        faultDate = fault.timestamp;
+                    } else if (typeof fault.timestamp === 'string' || typeof fault.timestamp === 'number') {
+                        faultDate = new Date(fault.timestamp);
+                    } else {
+                        return false;
+                    }
+                    
+                    if (isNaN(faultDate.getTime())) {
+                        return false;
+                    }
+                    
+                    return faultDate >= today;
+                } catch (error) {
+                    console.error('Error checking fault date:', error);
+                    return false;
+                }
+            }).length;
+            
             elements.faultsToday.textContent = faultsToday;
             
             // Update fault chart
