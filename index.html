@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --primary: #4361ee;
@@ -651,30 +652,115 @@
             margin-bottom: 15px;
         }
 
-        /* Stats Card */
+        /* Quick Stats Card - Enhanced */
+        .stats-card .card-content {
+            padding: 20px;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
+            gap: 15px;
         }
 
         .stat-item {
-            text-align: center;
-            padding: 20px;
-            background: var(--light);
+            background: linear-gradient(135deg, var(--light), #f0f4ff);
             border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(67, 97, 238, 0.1);
+        }
+
+        .stat-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0.7;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 15px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
         }
 
         .stat-label {
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             color: var(--gray);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .stat-value {
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: 700;
             color: var(--dark);
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .stat-unit {
+            font-size: 0.9rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .stat-trend {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .stat-trend.positive {
+            background: rgba(76, 201, 240, 0.15);
+            color: var(--success);
+        }
+
+        .stat-trend.negative {
+            background: rgba(247, 37, 133, 0.15);
+            color: var(--danger);
+        }
+
+        .stat-trend.neutral {
+            background: rgba(108, 117, 125, 0.15);
+            color: var(--gray);
+        }
+
+        /* Mini Chart */
+        .mini-chart {
+            height: 40px;
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .chart-canvas {
+            width: 100%;
+            height: 100%;
         }
 
         /* Footer */
@@ -1011,6 +1097,10 @@
             .gas-value {
                 font-size: 2rem;
             }
+            
+            .stat-value {
+                font-size: 1.8rem;
+            }
         }
 
         @media (max-width: 480px) {
@@ -1032,6 +1122,10 @@
             
             .gas-value {
                 font-size: 1.8rem;
+            }
+            
+            .stat-value {
+                font-size: 1.6rem;
             }
         }
     </style>
@@ -1274,28 +1368,64 @@
                     </div>
                 </div>
 
-                <!-- Quick Stats -->
+                <!-- Quick Stats - Enhanced -->
                 <div class="card stats-card">
                     <div class="card-header">
                         <h2><i class="fas fa-chart-bar"></i> Quick Stats</h2>
                     </div>
                     <div class="card-content">
                         <div class="stats-grid">
+                            <!-- Uptime -->
                             <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
                                 <div class="stat-label">Uptime</div>
-                                <div class="stat-value" id="uptime">--</div>
+                                <div class="stat-value" id="uptime">0h 0m 0s</div>
+                                <div class="stat-unit">Continuous</div>
+                                <div class="stat-trend positive" id="uptimeTrend">+0.0%</div>
                             </div>
+
+                            <!-- Faults Today -->
                             <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
                                 <div class="stat-label">Faults Today</div>
                                 <div class="stat-value" id="faultsToday">0</div>
+                                <div class="stat-unit">Total Faults</div>
+                                <div class="stat-trend neutral" id="faultsTrend">No change</div>
+                                <div class="mini-chart">
+                                    <canvas class="chart-canvas" id="faultsChart"></canvas>
+                                </div>
                             </div>
+
+                            <!-- Average Temperature -->
                             <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-thermometer-half"></i>
+                                </div>
                                 <div class="stat-label">Avg Temp</div>
-                                <div class="stat-value" id="avgTemp">-- °C</div>
+                                <div class="stat-value" id="avgTemp">--</div>
+                                <div class="stat-unit">°C</div>
+                                <div class="stat-trend neutral" id="tempTrend">Stable</div>
+                                <div class="mini-chart">
+                                    <canvas class="chart-canvas" id="tempChart"></canvas>
+                                </div>
                             </div>
+
+                            <!-- System Load -->
                             <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-microchip"></i>
+                                </div>
                                 <div class="stat-label">System Load</div>
-                                <div class="stat-value" id="systemLoad">-- %</div>
+                                <div class="stat-value" id="systemLoad">--</div>
+                                <div class="stat-unit">%</div>
+                                <div class="stat-trend neutral" id="loadTrend">Idle</div>
+                                <div class="mini-chart">
+                                    <canvas class="chart-canvas" id="loadChart"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1359,8 +1489,18 @@
             alert: false,
             lastUpdate: null,
             faults: [],
-            connectionStatus: 'disconnected'
+            connectionStatus: 'disconnected',
+            temperatureHistory: [],
+            loadHistory: [],
+            faultHistory: [],
+            startTime: Date.now(),
+            lastStatsUpdate: Date.now()
         };
+
+        // Charts
+        let faultsChart = null;
+        let tempChart = null;
+        let loadChart = null;
 
         // DOM Elements
         const elements = {
@@ -1408,9 +1548,13 @@
             
             // Stats elements
             uptime: document.getElementById('uptime'),
+            uptimeTrend: document.getElementById('uptimeTrend'),
             faultsToday: document.getElementById('faultsToday'),
+            faultsTrend: document.getElementById('faultsTrend'),
             avgTemp: document.getElementById('avgTemp'),
+            tempTrend: document.getElementById('tempTrend'),
             systemLoad: document.getElementById('systemLoad'),
+            loadTrend: document.getElementById('loadTrend'),
             
             // Connection elements
             wifiIcon: document.getElementById('wifiIcon'),
@@ -1426,6 +1570,7 @@
         // Initialize the application
         function init() {
             setupEventListeners();
+            initializeCharts();
             connectToFirebase();
             startUptimeCounter();
             loadFaults();
@@ -1461,6 +1606,77 @@
             
             // Resolve fault button
             elements.resolveFaultBtn.addEventListener('click', resolveCurrentFault);
+        }
+
+        // Initialize charts
+        function initializeCharts() {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                },
+                elements: {
+                    point: { radius: 0 },
+                    line: { 
+                        tension: 0.4,
+                        borderWidth: 2
+                    }
+                }
+            };
+
+            // Faults Chart
+            const faultsCtx = document.getElementById('faultsChart').getContext('2d');
+            faultsChart = new Chart(faultsCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 10}, (_, i) => i),
+                    datasets: [{
+                        data: Array(10).fill(0),
+                        borderColor: '#f72585',
+                        backgroundColor: 'rgba(247, 37, 133, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // Temperature Chart
+            const tempCtx = document.getElementById('tempChart').getContext('2d');
+            tempChart = new Chart(tempCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 10}, (_, i) => i),
+                    datasets: [{
+                        data: Array(10).fill(0),
+                        borderColor: '#4cc9f0',
+                        backgroundColor: 'rgba(76, 201, 240, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // Load Chart
+            const loadCtx = document.getElementById('loadChart').getContext('2d');
+            loadChart = new Chart(loadCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 10}, (_, i) => i),
+                    datasets: [{
+                        data: Array(10).fill(0),
+                        borderColor: '#4361ee',
+                        backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
         }
 
         // Connect to Firebase
@@ -1511,6 +1727,9 @@
             
             // Update control data
             updateControlData(data);
+            
+            // Update statistics
+            updateStatistics(data);
         }
 
         // Update battery data
@@ -1633,6 +1852,92 @@
             
             elements.relayIndicator.classList.toggle('on', relayStatus);
             elements.buzzerIndicator.classList.toggle('active', buzzerStatus);
+        }
+
+        // Update statistics
+        function updateStatistics(data) {
+            const now = Date.now();
+            const timeDiff = now - systemState.lastStatsUpdate;
+            
+            // Update every 5 seconds
+            if (timeDiff > 5000) {
+                systemState.lastStatsUpdate = now;
+                
+                // Calculate average temperature
+                const irTemp = data.ir_temp_c || 0;
+                const batTemp = data.battery_temp_c || 0;
+                const avgTemp = (irTemp + batTemp) / 2;
+                elements.avgTemp.textContent = avgTemp.toFixed(1);
+                
+                // Update temperature history for chart
+                updateChartData(tempChart, avgTemp);
+                
+                // Calculate system load (based on fan speed and alert state)
+                const fanSpeed = data.fan_speed_percent || 0;
+                const systemLoad = Math.min(100, fanSpeed + (data.system_alert ? 30 : 0));
+                elements.systemLoad.textContent = systemLoad.toFixed(0);
+                
+                // Update load history for chart
+                updateChartData(loadChart, systemLoad);
+                
+                // Update temperature trend
+                updateTrendIndicator(elements.tempTrend, systemState.temperatureHistory, avgTemp, '°C');
+                
+                // Update load trend
+                updateTrendIndicator(elements.loadTrend, systemState.loadHistory, systemLoad, '%');
+                
+                // Store history data
+                systemState.temperatureHistory.push({
+                    timestamp: now,
+                    value: avgTemp
+                });
+                
+                systemState.loadHistory.push({
+                    timestamp: now,
+                    value: systemLoad
+                });
+                
+                // Keep only last 100 data points
+                if (systemState.temperatureHistory.length > 100) {
+                    systemState.temperatureHistory.shift();
+                }
+                if (systemState.loadHistory.length > 100) {
+                    systemState.loadHistory.shift();
+                }
+            }
+        }
+
+        // Update chart data
+        function updateChartData(chart, newValue) {
+            if (chart.data.datasets[0].data.length >= 10) {
+                chart.data.datasets[0].data.shift();
+            }
+            chart.data.datasets[0].data.push(newValue);
+            chart.update('none');
+        }
+
+        // Update trend indicator
+        function updateTrendIndicator(element, history, currentValue, unit) {
+            if (history.length < 2) {
+                element.textContent = 'Stable';
+                element.className = 'stat-trend neutral';
+                return;
+            }
+            
+            const prevValue = history[history.length - 1].value;
+            const diff = currentValue - prevValue;
+            const percentChange = prevValue > 0 ? (diff / prevValue) * 100 : 0;
+            
+            if (Math.abs(percentChange) < 0.5) {
+                element.textContent = 'Stable';
+                element.className = 'stat-trend neutral';
+            } else if (percentChange > 0) {
+                element.textContent = `+${percentChange.toFixed(1)}%`;
+                element.className = 'stat-trend positive';
+            } else {
+                element.textContent = `${percentChange.toFixed(1)}%`;
+                element.className = 'stat-trend negative';
+            }
         }
 
         // Update system status
@@ -1844,27 +2149,59 @@
             const today = new Date().toDateString();
             const faultsToday = systemState.faults.filter(fault => {
                 const faultDate = new Date(fault.timestamp).toDateString();
-                return faultDate === today;
+                return faultDate === today && !fault.resolved;
             }).length;
             
             elements.faultsToday.textContent = faultsToday;
             
-            // Update average temperature (simplified)
-            elements.avgTemp.textContent = '-- °C';
+            // Update fault trend
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toDateString();
+            const faultsYesterday = systemState.faults.filter(fault => {
+                const faultDate = new Date(fault.timestamp).toDateString();
+                return faultDate === yesterdayStr && !fault.resolved;
+            }).length;
             
-            // Update system load (simplified)
-            elements.systemLoad.textContent = '-- %';
+            if (faultsYesterday > 0) {
+                const change = ((faultsToday - faultsYesterday) / faultsYesterday) * 100;
+                if (Math.abs(change) < 1) {
+                    elements.faultsTrend.textContent = 'No change';
+                    elements.faultsTrend.className = 'stat-trend neutral';
+                } else if (change > 0) {
+                    elements.faultsTrend.textContent = `+${change.toFixed(0)}%`;
+                    elements.faultsTrend.className = 'stat-trend negative';
+                } else {
+                    elements.faultsTrend.textContent = `${change.toFixed(0)}%`;
+                    elements.faultsTrend.className = 'stat-trend positive';
+                }
+            } else {
+                elements.faultsTrend.textContent = faultsToday > 0 ? 'New issues' : 'No change';
+                elements.faultsTrend.className = 'stat-trend neutral';
+            }
+            
+            // Update fault chart
+            if (faultsChart) {
+                updateChartData(faultsChart, faultsToday);
+            }
         }
 
         // Start uptime counter
         function startUptimeCounter() {
-            let seconds = 0;
             setInterval(() => {
-                seconds++;
-                const hours = Math.floor(seconds / 3600);
-                const minutes = Math.floor((seconds % 3600) / 60);
-                const secs = seconds % 60;
-                elements.uptime.textContent = `${hours}h ${minutes}m ${secs}s`;
+                const now = Date.now();
+                const uptimeMs = now - systemState.startTime;
+                
+                // Calculate uptime components
+                const hours = Math.floor(uptimeMs / (1000 * 60 * 60));
+                const minutes = Math.floor((uptimeMs % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((uptimeMs % (1000 * 60)) / 1000);
+                
+                elements.uptime.textContent = `${hours}h ${minutes}m ${seconds}s`;
+                
+                // Calculate uptime percentage (based on 24 hours)
+                const uptimePercent = (uptimeMs / (24 * 60 * 60 * 1000)) * 100;
+                elements.uptimeTrend.textContent = `+${uptimePercent.toFixed(1)}%`;
             }, 1000);
         }
 
