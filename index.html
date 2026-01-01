@@ -1802,26 +1802,42 @@
             }
         };
 
-        // Helper function to convert to Mumbai time (IST)
+        // CORRECTED: Helper function to convert any date to Mumbai time (IST)
         function toMumbaiTime(date) {
             if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
                 return new Date(); // Return current date if invalid
             }
             
-            // Convert to Mumbai time (UTC+5:30)
+            // Create a new date object to avoid modifying the original
+            const mumbaiDate = new Date(date);
+            
+            // Get current UTC time
+            const utcTime = date.getTime();
+            
+            // Mumbai is UTC+5:30, so we need to add 5.5 hours (in milliseconds)
             const mumbaiOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
-            const utcTime = date.getTime() + (date.getTimezoneOffset() * 60 * 1000);
-            return new Date(utcTime + mumbaiOffset);
+            
+            // Apply Mumbai offset
+            const mumbaiTime = new Date(utcTime + mumbaiOffset);
+            
+            return mumbaiTime;
         }
 
-        // Format date in Mumbai time
-        function formatMumbaiDate(date) {
+        // Alternative: More reliable method using Intl.DateTimeFormat
+        function formatInMumbaiTime(date, options = {}) {
             if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
                 return 'N/A';
             }
             
-            return date.toLocaleDateString('en-US', {
+            return new Intl.DateTimeFormat('en-US', {
                 timeZone: 'Asia/Kolkata',
+                ...options
+            }).format(date);
+        }
+
+        // Format date in Mumbai time
+        function formatMumbaiDate(date) {
+            return formatInMumbaiTime(date, {
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric'
@@ -1830,12 +1846,7 @@
 
         // Format time in Mumbai time
         function formatMumbaiTime(date) {
-            if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
-                return 'N/A';
-            }
-            
-            return date.toLocaleTimeString('en-US', {
-                timeZone: 'Asia/Kolkata',
+            return formatInMumbaiTime(date, {
                 hour: '2-digit',
                 minute: '2-digit',
                 hour12: true
@@ -1848,16 +1859,14 @@
                 return 'N/A';
             }
             
-            const dateStr = date.toLocaleDateString('en-US', {
-                timeZone: 'Asia/Kolkata',
+            const dateStr = formatInMumbaiTime(date, {
                 weekday: 'long',
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
             });
             
-            const timeStr = date.toLocaleTimeString('en-US', {
-                timeZone: 'Asia/Kolkata',
+            const timeStr = formatInMumbaiTime(date, {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
@@ -2022,37 +2031,45 @@
                         
                         // Parse timestamp
                         if (value.timestamp) {
+                            let timestampValue;
+                            
                             if (typeof value.timestamp === 'number') {
-                                timestamp = new Date(value.timestamp);
+                                // If it's a number, assume it's milliseconds since epoch (UTC)
+                                timestampValue = value.timestamp;
                             } else if (typeof value.timestamp === 'string') {
                                 const parsed = Date.parse(value.timestamp);
-                                timestamp = isNaN(parsed) ? new Date() : new Date(parsed);
+                                timestampValue = isNaN(parsed) ? Date.now() : parsed;
                             } else if (value.timestamp && typeof value.timestamp === 'object' && value.timestamp._seconds) {
-                                timestamp = new Date(value.timestamp._seconds * 1000);
+                                // Firebase Timestamp object
+                                timestampValue = value.timestamp._seconds * 1000;
                             } else {
-                                timestamp = new Date();
+                                timestampValue = Date.now();
                             }
                             
-                            // Convert to Mumbai time
-                            timestamp = toMumbaiTime(timestamp);
+                            // Create date from UTC timestamp, then convert to Mumbai time
+                            const utcDate = new Date(timestampValue);
+                            timestamp = toMumbaiTime(utcDate);
                         } else {
                             timestamp = toMumbaiTime(new Date());
                         }
                         
                         // Parse resolvedAt
                         if (value.resolvedAt) {
+                            let resolvedAtValue;
+                            
                             if (typeof value.resolvedAt === 'number') {
-                                resolvedAt = new Date(value.resolvedAt);
+                                resolvedAtValue = value.resolvedAt;
                             } else if (typeof value.resolvedAt === 'string') {
                                 const parsed = Date.parse(value.resolvedAt);
-                                resolvedAt = isNaN(parsed) ? null : new Date(parsed);
+                                resolvedAtValue = isNaN(parsed) ? null : parsed;
                             } else if (value.resolvedAt && typeof value.resolvedAt === 'object' && value.resolvedAt._seconds) {
-                                resolvedAt = new Date(value.resolvedAt._seconds * 1000);
+                                resolvedAtValue = value.resolvedAt._seconds * 1000;
                             }
                             
                             // Convert to Mumbai time if exists
-                            if (resolvedAt) {
-                                resolvedAt = toMumbaiTime(resolvedAt);
+                            if (resolvedAtValue !== null && resolvedAtValue !== undefined) {
+                                const utcResolvedDate = new Date(resolvedAtValue);
+                                resolvedAt = toMumbaiTime(utcResolvedDate);
                             }
                         }
                         
@@ -2291,37 +2308,45 @@
                             
                             // Parse timestamp
                             if (value.timestamp) {
+                                let timestampValue;
+                                
                                 if (typeof value.timestamp === 'number') {
-                                    timestamp = new Date(value.timestamp);
+                                    // If it's a number, assume it's milliseconds since epoch (UTC)
+                                    timestampValue = value.timestamp;
                                 } else if (typeof value.timestamp === 'string') {
                                     const parsed = Date.parse(value.timestamp);
-                                    timestamp = isNaN(parsed) ? new Date() : new Date(parsed);
+                                    timestampValue = isNaN(parsed) ? Date.now() : parsed;
                                 } else if (value.timestamp && typeof value.timestamp === 'object' && value.timestamp._seconds) {
-                                    timestamp = new Date(value.timestamp._seconds * 1000);
+                                    // Firebase Timestamp object
+                                    timestampValue = value.timestamp._seconds * 1000;
                                 } else {
-                                    timestamp = new Date();
+                                    timestampValue = Date.now();
                                 }
                                 
-                                // Convert to Mumbai time
-                                timestamp = toMumbaiTime(timestamp);
+                                // Create date from UTC timestamp, then convert to Mumbai time
+                                const utcDate = new Date(timestampValue);
+                                timestamp = toMumbaiTime(utcDate);
                             } else {
                                 timestamp = toMumbaiTime(new Date());
                             }
                             
                             // Parse resolvedAt
                             if (value.resolvedAt) {
+                                let resolvedAtValue;
+                                
                                 if (typeof value.resolvedAt === 'number') {
-                                    resolvedAt = new Date(value.resolvedAt);
+                                    resolvedAtValue = value.resolvedAt;
                                 } else if (typeof value.resolvedAt === 'string') {
                                     const parsed = Date.parse(value.resolvedAt);
-                                    resolvedAt = isNaN(parsed) ? null : new Date(parsed);
+                                    resolvedAtValue = isNaN(parsed) ? null : parsed;
                                 } else if (value.resolvedAt && typeof value.resolvedAt === 'object' && value.resolvedAt._seconds) {
-                                    resolvedAt = new Date(value.resolvedAt._seconds * 1000);
+                                    resolvedAtValue = value.resolvedAt._seconds * 1000;
                                 }
                                 
                                 // Convert to Mumbai time if exists
-                                if (resolvedAt) {
-                                    resolvedAt = toMumbaiTime(resolvedAt);
+                                if (resolvedAtValue !== null && resolvedAtValue !== undefined) {
+                                    const utcResolvedDate = new Date(resolvedAtValue);
+                                    resolvedAt = toMumbaiTime(utcResolvedDate);
                                 }
                             }
                             
@@ -2433,6 +2458,7 @@
                     </td>
                     <td>
                         <div class="fault-time">${faultTime}</div>
+                        <small style="font-size: 0.7rem; color: var(--gray);">IST</small>
                     </td>
                     <td>
                         <div class="fault-type">
