@@ -1736,21 +1736,17 @@
                 const faults = snapshot.val();
                 if (faults) {
                     systemState.faults = Object.entries(faults).map(([key, value]) => {
-                        // IMPORTANT FIX: Properly handle timestamps
+                        // Proper timestamp handling
                         let timestamp;
                         let resolvedAt = null;
                         
-                        // Handle timestamp - convert from milliseconds or string
                         if (value.timestamp) {
                             if (typeof value.timestamp === 'number') {
-                                // If it's a number (milliseconds since epoch)
                                 timestamp = new Date(value.timestamp);
                             } else if (typeof value.timestamp === 'string') {
-                                // If it's a string, try to parse it
                                 const parsed = Date.parse(value.timestamp);
                                 timestamp = isNaN(parsed) ? new Date() : new Date(parsed);
                             } else if (value.timestamp && typeof value.timestamp === 'object' && value.timestamp._seconds) {
-                                // Firebase timestamp object
                                 timestamp = new Date(value.timestamp._seconds * 1000);
                             } else {
                                 timestamp = new Date();
@@ -1759,7 +1755,6 @@
                             timestamp = new Date();
                         }
                         
-                        // Handle resolvedAt similarly
                         if (value.resolvedAt) {
                             if (typeof value.resolvedAt === 'number') {
                                 resolvedAt = new Date(value.resolvedAt);
@@ -2127,7 +2122,7 @@
             const icon = faultTypeIcons[fault.faultType] || 'fas fa-exclamation-triangle';
             const resolvedClass = fault.resolved ? 'resolved' : '';
             
-            // Format date and time correctly
+            // Format date and time correctly for list view (relative time)
             let timeString = 'Just now';
             let detailedTime = '';
             
@@ -2158,12 +2153,13 @@
                 
                 // Detailed time for tooltip or detailed view
                 detailedTime = faultTime.toLocaleString('en-US', {
-                    month: 'short',
+                    month: 'long',
                     day: 'numeric',
                     year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit',
-                    second: '2-digit'
+                    second: '2-digit',
+                    hour12: true
                 });
             }
             
@@ -2255,7 +2251,7 @@
             updateFaultList();
         }
 
-        // Show fault detail modal
+        // Show fault detail modal with complete date/time information
         function showFaultDetail(faultId) {
             const fault = systemState.faults.find(f => f.id === faultId);
             if (!fault) {
@@ -2263,39 +2259,50 @@
                 return;
             }
             
-            let dateString = 'N/A';
-            let timeString = 'N/A';
-            let resolvedDateString = 'Not resolved';
-            let resolvedTimeString = '';
+            let detectedDate = 'N/A';
+            let detectedTime = 'N/A';
+            let detectedFullDateTime = 'N/A';
+            let resolvedDate = 'Not resolved';
+            let resolvedTime = '';
+            let resolvedFullDateTime = '';
             
             if (fault.timestamp && fault.timestamp instanceof Date && !isNaN(fault.timestamp.getTime())) {
-                dateString = fault.timestamp.toLocaleDateString('en-US', {
+                // Full date format: "Tuesday, January 16, 2024"
+                detectedDate = fault.timestamp.toLocaleDateString('en-US', {
                     weekday: 'long',
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
                 });
-                timeString = fault.timestamp.toLocaleTimeString('en-US', {
+                
+                // Time with AM/PM format: "2:30:45 PM"
+                detectedTime = fault.timestamp.toLocaleTimeString('en-US', {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
                     hour12: true
                 });
+                
+                // Combined full date and time
+                detectedFullDateTime = `${detectedDate} at ${detectedTime}`;
             }
             
             if (fault.resolvedAt && fault.resolvedAt instanceof Date && !isNaN(fault.resolvedAt.getTime())) {
-                resolvedDateString = fault.resolvedAt.toLocaleDateString('en-US', {
+                resolvedDate = fault.resolvedAt.toLocaleDateString('en-US', {
                     weekday: 'long',
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
                 });
-                resolvedTimeString = fault.resolvedAt.toLocaleTimeString('en-US', {
+                
+                resolvedTime = fault.resolvedAt.toLocaleTimeString('en-US', {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
                     hour12: true
                 });
+                
+                resolvedFullDateTime = `${resolvedDate} at ${resolvedTime}`;
             }
             
             elements.faultDetailContent.innerHTML = `
@@ -2320,20 +2327,28 @@
                     ` : ''}
                     <div class="detail-item">
                         <label>Detected Date:</label>
-                        <strong>${dateString}</strong>
+                        <strong>${detectedDate}</strong>
                     </div>
                     <div class="detail-item">
                         <label>Detected Time:</label>
-                        <strong>${timeString}</strong>
+                        <strong>${detectedTime}</strong>
+                    </div>
+                    <div class="detail-item">
+                        <label>Full Date & Time:</label>
+                        <strong>${detectedFullDateTime}</strong>
                     </div>
                     ${fault.resolved ? `
                     <div class="detail-item">
                         <label>Resolved Date:</label>
-                        <strong>${resolvedDateString}</strong>
+                        <strong>${resolvedDate}</strong>
                     </div>
                     <div class="detail-item">
                         <label>Resolved Time:</label>
-                        <strong>${resolvedTimeString}</strong>
+                        <strong>${resolvedTime}</strong>
+                    </div>
+                    <div class="detail-item">
+                        <label>Full Resolved Date & Time:</label>
+                        <strong>${resolvedFullDateTime}</strong>
                     </div>
                     ` : ''}
                     <div class="detail-item">
