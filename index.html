@@ -1,850 +1,2328 @@
-<script>
-    // Firebase Configuration
-    const firebaseConfig = {
-        databaseURL: "https://battery-failure-monitor-default-rtdb.asia-southeast1.firebasedatabase.app/"
-    };
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battery Failure Monitoring System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #7209b7;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --info: #4895ef;
+            --dark: #212529;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+            --gray-light: #e9ecef;
+            --border-radius: 12px;
+            --box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    // State variables
-    let systemState = {
-        alert: false,
-        lastUpdate: null,
-        faults: [],
-        connectionStatus: 'disconnected',
-        temperatureHistory: [],
-        loadHistory: [],
-        faultHistory: [],
-        startTime: Date.now(),
-        lastStatsUpdate: Date.now(),
-        buzzerActive: false,
-        liveData: null
-    };
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--dark);
+        }
 
-    // Charts
-    let faultsChart = null;
-    let tempChart = null;
-    let loadChart = null;
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
 
-    // DOM Elements
-    const elements = {
-        systemStatus: document.getElementById('systemStatus'),
-        statusDot: document.querySelector('.status-dot'),
-        statusText: document.querySelector('.status-text'),
-        lastUpdate: document.getElementById('lastUpdate'),
-        
-        // Battery elements
-        cell1: document.getElementById('cell1'),
-        cell2: document.getElementById('cell2'),
-        cell3: document.getElementById('cell3'),
-        progress1: document.getElementById('progress1'),
-        progress2: document.getElementById('progress2'),
-        progress3: document.getElementById('progress3'),
-        totalVoltage: document.getElementById('totalVoltage'),
-        
-        // Temperature elements - Unified design
-        irTemp: document.getElementById('irTemp'),
-        batTemp: document.getElementById('batTemp'),
-        irStatus: document.getElementById('irStatus'),
-        batStatus: document.getElementById('batStatus'),
-        irGauge: document.getElementById('irGauge'),
-        batGauge: document.getElementById('batGauge'),
-        
-        // Gas elements - Unified design
-        gas1: document.getElementById('gas1'),
-        gas2: document.getElementById('gas2'),
-        gas1Status: document.getElementById('gas1Status'),
-        gas2Status: document.getElementById('gas2Status'),
-        gas1Indicator: document.getElementById('gas1Indicator'),
-        gas2Indicator: document.getElementById('gas2Indicator'),
-        
-        // Control elements
-        fanSpeed: document.getElementById('fanSpeed'),
-        fanAnimation: document.getElementById('fanAnimation'),
-        relayStatus: document.getElementById('relayStatus'),
-        relayIndicator: document.getElementById('relayIndicator'),
-        buzzerStatus: document.getElementById('buzzerStatus'),
-        buzzerIndicator: document.getElementById('buzzerIndicator'),
-        
-        // Fault elements
-        faultList: document.getElementById('faultList'),
-        refreshFaults: document.getElementById('refreshFaults'),
-        
-        // Stats elements
-        uptime: document.getElementById('uptime'),
-        uptimeTrend: document.getElementById('uptimeTrend'),
-        faultsToday: document.getElementById('faultsToday'),
-        faultsTrend: document.getElementById('faultsTrend'),
-        avgTemp: document.getElementById('avgTemp'),
-        tempTrend: document.getElementById('tempTrend'),
-        systemLoad: document.getElementById('systemLoad'),
-        loadTrend: document.getElementById('loadTrend'),
-        
-        // Connection elements
-        wifiIcon: document.getElementById('wifiIcon'),
-        connectionStatus: document.getElementById('connectionStatus'),
-        
-        // Modal elements
-        modal: document.getElementById('faultDetailModal'),
-        modalClose: document.querySelector('.modal-close'),
-        faultDetailContent: document.getElementById('faultDetailContent'),
-        resolveFaultBtn: document.getElementById('resolveFaultBtn')
-    };
+        /* Header Styles */
+        .header {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px 30px;
+            margin-bottom: 30px;
+            box-shadow: var(--box-shadow);
+        }
 
-    // Initialize the application
-    function init() {
-        console.log("Initializing Battery Monitor...");
-        setupEventListeners();
-        initializeCharts();
-        connectToFirebase();
-        startUptimeCounter();
-        loadFaults();
-    }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-    // Setup event listeners
-    function setupEventListeners() {
-        // Filter buttons
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                filterFaults(btn.dataset.filter);
-            });
-        });
-        
-        // Refresh faults button
-        elements.refreshFaults.addEventListener('click', loadFaults);
-        
-        // Modal close buttons
-        document.querySelectorAll('.modal-close').forEach(btn => {
-            btn.addEventListener('click', () => {
-                elements.modal.classList.remove('active');
-            });
-        });
-        
-        // Close modal on background click
-        elements.modal.addEventListener('click', (e) => {
-            if (e.target === elements.modal) {
-                elements.modal.classList.remove('active');
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo i {
+            font-size: 2.5rem;
+            color: var(--primary);
+        }
+
+        .logo h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .system-status {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 16px;
+            background: var(--gray-light);
+            border-radius: 50px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--gray);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.safe {
+            background: var(--success);
+            animation: pulse-safe 2s infinite;
+        }
+
+        .status-dot.alert {
+            background: var(--danger);
+            animation: pulse-alert 1s infinite;
+        }
+
+        .status-text {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .last-update {
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+
+        /* Dashboard Layout */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        /* Card Styles */
+        .card {
+            background: white;
+            border-radius: var(--border-radius);
+            margin-bottom: 30px;
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-header h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-content {
+            padding: 25px;
+        }
+
+        /* Battery Card */
+        .voltage-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .voltage-cell {
+            text-align: center;
+            padding: 20px;
+            background: var(--light);
+            border-radius: 10px;
+            border: 2px solid transparent;
+            transition: var(--transition);
+        }
+
+        .voltage-cell:hover {
+            border-color: var(--primary);
+        }
+
+        .cell-label {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 10px;
+        }
+
+        .cell-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: var(--dark);
+        }
+
+        .cell-progress {
+            height: 8px;
+            background: var(--gray-light);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), var(--info));
+            border-radius: 4px;
+            width: 0%;
+            transition: width 1s ease;
+        }
+
+        .battery-summary {
+            display: flex;
+            justify-content: center;
+            padding-top: 20px;
+            border-top: 1px solid var(--gray-light);
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-item span {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 5px;
+        }
+
+        .summary-item strong {
+            font-size: 1.8rem;
+            color: var(--dark);
+        }
+
+        /* Temperature Card - Unified Design */
+        .temp-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .temp-sensor {
+            background: var(--light);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: var(--transition);
+        }
+
+        .temp-sensor:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .sensor-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .sensor-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .sensor-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .temp-display {
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .temp-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--dark);
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .temp-unit {
+            font-size: 1.2rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .temp-status {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--success);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
+        .temp-status.warning {
+            background: var(--warning);
+        }
+
+        .temp-status.danger {
+            background: var(--danger);
+        }
+
+        .temp-gauge {
+            height: 8px;
+            background: var(--gray-light);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .gauge-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), var(--warning), var(--danger));
+            border-radius: 4px;
+            width: 0%;
+            transition: width 1s ease;
+        }
+
+        .temp-limits {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        /* Gas Card */
+        .gas-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .gas-sensor {
+            background: var(--light);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: var(--transition);
+        }
+
+        .gas-sensor:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        .gas-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .gas-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #f8961e, #f3722c);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .gas-label {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .gas-display {
+            position: relative;
+            margin: 20px 0;
+        }
+
+        .gas-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--dark);
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .gas-unit {
+            font-size: 1.2rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .gas-status {
+            display: inline-block;
+            padding: 4px 12px;
+            background: var(--success);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+
+        .gas-status.warning {
+            background: var(--warning);
+        }
+
+        .gas-status.danger {
+            background: var(--danger);
+        }
+
+        .gas-indicator {
+            height: 8px;
+            background: var(--gray-light);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .indicator-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), var(--warning), var(--danger));
+            border-radius: 4px;
+            width: 0%;
+            transition: width 1s ease;
+        }
+
+        .gas-limits {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        /* Controls Card */
+        .control-item {
+            display: flex;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .control-item:last-child {
+            border-bottom: none;
+        }
+
+        .control-label {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .control-label i {
+            font-size: 1.5rem;
+            color: var(--primary);
+        }
+
+        .control-value {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 0 20px;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .control-status {
+            width: 80px;
+            text-align: center;
+        }
+
+        .fan-animation {
+            font-size: 1.8rem;
+            color: var(--primary);
+            transition: var(--transition);
+        }
+
+        .fan-animation.active {
+            animation: rotate 2s linear infinite;
+        }
+
+        .relay-indicator {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--gray);
+            margin: 0 auto;
+            transition: var(--transition);
+        }
+
+        .relay-indicator.on {
+            background: var(--success);
+            box-shadow: 0 0 15px var(--success);
+        }
+
+        .buzzer-indicator {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--gray);
+            margin: 0 auto;
+            transition: var(--transition);
+        }
+
+        .buzzer-indicator.active {
+            background: var(--danger);
+            animation: pulse-alert 1s infinite;
+        }
+
+        /* Fault Card */
+        .fault-card .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-refresh {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-refresh:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(180deg);
+        }
+
+        .fault-filters {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            padding: 8px 20px;
+            border: 2px solid var(--gray-light);
+            background: white;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .fault-list {
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .fault-item {
+            background: var(--light);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--danger);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .fault-item:hover {
+            background: #f0f4ff;
+            transform: translateX(5px);
+        }
+
+        .fault-item.resolved {
+            border-left-color: var(--success);
+            opacity: 0.7;
+        }
+
+        .fault-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .fault-title {
+            font-weight: 600;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .fault-time {
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        .fault-desc {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 8px;
+        }
+
+        .fault-value {
+            font-size: 0.85rem;
+            color: var(--dark);
+            font-weight: 500;
+        }
+
+        .fault-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--gray);
+        }
+
+        .fault-empty i {
+            font-size: 3rem;
+            color: var(--success);
+            margin-bottom: 15px;
+        }
+
+        /* Quick Stats Card - Enhanced */
+        .stats-card .card-content {
+            padding: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: linear-gradient(135deg, var(--light), #f0f4ff);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-item:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(67, 97, 238, 0.1);
+        }
+
+        .stat-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0.7;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 15px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark);
+            line-height: 1;
+            margin-bottom: 5px;
+        }
+
+        .stat-unit {
+            font-size: 0.9rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .stat-trend {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .stat-trend.positive {
+            background: rgba(76, 201, 240, 0.15);
+            color: var(--success);
+        }
+
+        .stat-trend.negative {
+            background: rgba(247, 37, 133, 0.15);
+            color: var(--danger);
+        }
+
+        .stat-trend.neutral {
+            background: rgba(108, 117, 125, 0.15);
+            color: var(--gray);
+        }
+
+        /* Mini Chart */
+        .mini-chart {
+            height: 40px;
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .chart-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Footer */
+        .footer {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px 30px;
+            box-shadow: var(--box-shadow);
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-left p {
+            margin-bottom: 5px;
+        }
+
+        .footer-sub {
+            font-size: 0.9rem;
+            color: var(--gray);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            justify-content: flex-end;
+        }
+
+        .connection-status i {
+            color: var(--success);
+            font-size: 1.2rem;
+        }
+
+        .connection-status i.disconnected {
+            color: var(--danger);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .footer-links a {
+            text-decoration: none;
+            color: var(--gray);
+            font-size: 0.9rem;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalSlide 0.3s ease;
+        }
+
+        .modal-header {
+            padding: 25px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: var(--transition);
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .modal-footer {
+            padding: 20px 30px;
+            background: var(--light);
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--gray-light);
+            color: var(--dark);
+        }
+
+        .btn-secondary:hover {
+            background: #dde0e3;
+        }
+
+        /* Notification Styles */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateX(150%);
+            transition: transform 0.3s ease;
+            z-index: 1001;
+            border-left: 4px solid var(--gray);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left-color: var(--success);
+        }
+
+        .notification.error {
+            border-left-color: var(--danger);
+        }
+
+        .notification.info {
+            border-left-color: var(--info);
+        }
+
+        .notification i {
+            font-size: 1.2rem;
+        }
+
+        .notification.success i {
+            color: var(--success);
+        }
+
+        .notification.error i {
+            color: var(--danger);
+        }
+
+        /* Detail Styles */
+        .fault-detail-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .detail-item label {
+            font-size: 0.9rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .detail-item strong {
+            font-size: 1.1rem;
+            color: var(--dark);
+        }
+
+        .detail-item p {
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .status-resolved {
+            color: var(--success);
+        }
+
+        .status-active {
+            color: var(--danger);
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes pulse-safe {
+            0%, 100% { 
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(76, 201, 240, 0.7);
             }
-        });
-        
-        // Resolve fault button
-        elements.resolveFaultBtn.addEventListener('click', resolveCurrentFault);
-    }
-
-    // Initialize charts
-    function initializeCharts() {
-        const chartOptions = {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: false }
-            },
-            scales: {
-                x: { display: false },
-                y: { display: false }
-            },
-            elements: {
-                point: { radius: 0 },
-                line: { 
-                    tension: 0.4,
-                    borderWidth: 2
-                }
+            70% { 
+                opacity: 0.8;
+                box-shadow: 0 0 0 10px rgba(76, 201, 240, 0);
             }
+        }
+
+        @keyframes pulse-alert {
+            0%, 100% { 
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(247, 37, 133, 0.7);
+            }
+            70% { 
+                opacity: 0.8;
+                box-shadow: 0 0 0 10px rgba(247, 37, 133, 0);
+            }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes modalSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .voltage-grid,
+            .temp-grid,
+            .gas-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .system-status {
+                align-items: center;
+            }
+            
+            .voltage-grid,
+            .temp-grid,
+            .gas-grid,
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .footer-content {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .connection-status {
+                justify-content: center;
+            }
+            
+            .footer-links {
+                justify-content: center;
+            }
+            
+            .temp-value {
+                font-size: 2.5rem;
+            }
+            
+            .gas-value {
+                font-size: 2rem;
+            }
+            
+            .stat-value {
+                font-size: 1.8rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header {
+                padding: 15px;
+            }
+            
+            .card-content {
+                padding: 20px;
+            }
+            
+            .temp-value {
+                font-size: 2rem;
+            }
+            
+            .gas-value {
+                font-size: 1.8rem;
+            }
+            
+            .stat-value {
+                font-size: 1.6rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-car-battery"></i>
+                    <h1>Battery Monitor Pro</h1>
+                </div>
+                <div class="system-status">
+                    <div class="status-indicator" id="systemStatus">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Loading...</span>
+                    </div>
+                    <div class="last-update" id="lastUpdate">
+                        Last updated: --
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Dashboard -->
+        <main class="dashboard">
+            <!-- Left Column: Real-time Monitoring -->
+            <div class="dashboard-left">
+                <!-- Battery Status Card -->
+                <div class="card battery-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-battery-three-quarters"></i> Battery Status</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="voltage-grid">
+                            <div class="voltage-cell">
+                                <div class="cell-label">Cell 1</div>
+                                <div class="cell-value" id="cell1">-- V</div>
+                                <div class="cell-progress">
+                                    <div class="progress-bar" id="progress1"></div>
+                                </div>
+                            </div>
+                            <div class="voltage-cell">
+                                <div class="cell-label">Cell 2</div>
+                                <div class="cell-value" id="cell2">-- V</div>
+                                <div class="cell-progress">
+                                    <div class="progress-bar" id="progress2"></div>
+                                </div>
+                            </div>
+                            <div class="voltage-cell">
+                                <div class="cell-label">Cell 3</div>
+                                <div class="cell-value" id="cell3">-- V</div>
+                                <div class="cell-progress">
+                                    <div class="progress-bar" id="progress3"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="battery-summary">
+                            <div class="summary-item">
+                                <span>Total Voltage</span>
+                                <strong id="totalVoltage">-- V</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Temperature Monitoring - Unified Design -->
+                <div class="card temp-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-thermometer-half"></i> Temperature Monitoring</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="temp-grid">
+                            <!-- IR Sensor -->
+                            <div class="temp-sensor">
+                                <div class="sensor-header">
+                                    <div class="sensor-icon">
+                                        <i class="fas fa-temperature-high"></i>
+                                    </div>
+                                    <div class="sensor-label">IR Sensor</div>
+                                </div>
+                                <div class="temp-display">
+                                    <div class="temp-value" id="irTemp">--</div>
+                                    <div class="temp-unit">°C</div>
+                                </div>
+                                <div class="temp-status" id="irStatus">NORMAL</div>
+                                <div class="temp-gauge">
+                                    <div class="gauge-fill" id="irGauge"></div>
+                                </div>
+                                <div class="temp-limits">
+                                    <span>0°C</span>
+                                    <span>60°C</span>
+                                </div>
+                            </div>
+
+                            <!-- Battery Temperature -->
+                            <div class="temp-sensor">
+                                <div class="sensor-header">
+                                    <div class="sensor-icon">
+                                        <i class="fas fa-thermometer-full"></i>
+                                    </div>
+                                    <div class="sensor-label">Battery Temp</div>
+                                </div>
+                                <div class="temp-display">
+                                    <div class="temp-value" id="batTemp">--</div>
+                                    <div class="temp-unit">°C</div>
+                                </div>
+                                <div class="temp-status" id="batStatus">NORMAL</div>
+                                <div class="temp-gauge">
+                                    <div class="gauge-fill" id="batGauge"></div>
+                                </div>
+                                <div class="temp-limits">
+                                    <span>0°C</span>
+                                    <span>55°C</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gas Safety -->
+                <div class="card gas-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-wind"></i> Gas Safety</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="gas-grid">
+                            <!-- Gas Sensor 1 -->
+                            <div class="gas-sensor">
+                                <div class="gas-header">
+                                    <div class="gas-icon">
+                                        <i class="fas fa-wind"></i>
+                                    </div>
+                                    <div class="gas-label">Gas Sensor 1</div>
+                                </div>
+                                <div class="gas-display">
+                                    <div class="gas-value" id="gas1">--</div>
+                                    <div class="gas-unit">%</div>
+                                </div>
+                                <div class="gas-status" id="gas1Status">SAFE</div>
+                                <div class="gas-indicator">
+                                    <div class="indicator-fill" id="gas1Indicator"></div>
+                                </div>
+                                <div class="gas-limits">
+                                    <span>0%</span>
+                                    <span>100%</span>
+                                </div>
+                            </div>
+
+                            <!-- Gas Sensor 2 -->
+                            <div class="gas-sensor">
+                                <div class="gas-header">
+                                    <div class="gas-icon">
+                                        <i class="fas fa-smog"></i>
+                                    </div>
+                                    <div class="gas-label">Gas Sensor 2</div>
+                                </div>
+                                <div class="gas-display">
+                                    <div class="gas-value" id="gas2">--</div>
+                                    <div class="gas-unit">%</div>
+                                </div>
+                                <div class="gas-status" id="gas2Status">SAFE</div>
+                                <div class="gas-indicator">
+                                    <div class="indicator-fill" id="gas2Indicator"></div>
+                                </div>
+                                <div class="gas-limits">
+                                    <span>0%</span>
+                                    <span>100%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Control & Fault Log -->
+            <div class="dashboard-right">
+                <!-- System Controls -->
+                <div class="card controls-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-sliders-h"></i> System Controls</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="control-item">
+                            <div class="control-label">
+                                <i class="fas fa-fan"></i>
+                                <span>Cooling Fan</span>
+                            </div>
+                            <div class="control-value" id="fanSpeed">-- %</div>
+                            <div class="control-status">
+                                <div class="fan-animation" id="fanAnimation">
+                                    <i class="fas fa-fan"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="control-item">
+                            <div class="control-label">
+                                <i class="fas fa-power-off"></i>
+                                <span>Main Relay</span>
+                            </div>
+                            <div class="control-value" id="relayStatus">--</div>
+                            <div class="control-status">
+                                <div class="relay-indicator" id="relayIndicator"></div>
+                            </div>
+                        </div>
+                        <div class="control-item">
+                            <div class="control-label">
+                                <i class="fas fa-bell"></i>
+                                <span>Buzzer</span>
+                            </div>
+                            <div class="control-value" id="buzzerStatus">--</div>
+                            <div class="control-status">
+                                <div class="buzzer-indicator" id="buzzerIndicator"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fault Log -->
+                <div class="card fault-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-exclamation-triangle"></i> Fault Log</h2>
+                        <button class="btn-refresh" id="refreshFaults">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="card-content">
+                        <div class="fault-filters">
+                            <button class="filter-btn active" data-filter="all">All</button>
+                            <button class="filter-btn" data-filter="active">Active</button>
+                            <button class="filter-btn" data-filter="resolved">Resolved</button>
+                        </div>
+                        <div class="fault-list" id="faultList">
+                            <div class="fault-empty">
+                                <i class="fas fa-check-circle"></i>
+                                <p>No faults detected</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats - Enhanced -->
+                <div class="card stats-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-chart-bar"></i> Quick Stats</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="stats-grid">
+                            <!-- Uptime -->
+                            <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="stat-label">Uptime</div>
+                                <div class="stat-value" id="uptime">0h 0m 0s</div>
+                                <div class="stat-unit">Continuous</div>
+                                <div class="stat-trend positive" id="uptimeTrend">+0.0%</div>
+                            </div>
+
+                            <!-- Faults Today -->
+                            <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="stat-label">Faults Today</div>
+                                <div class="stat-value" id="faultsToday">0</div>
+                                <div class="stat-unit">Total Faults</div>
+                                <div class="stat-trend neutral" id="faultsTrend">No change</div>
+                                <div class="mini-chart">
+                                    <canvas class="chart-canvas" id="faultsChart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Average Temperature -->
+                            <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-thermometer-half"></i>
+                                </div>
+                                <div class="stat-label">Avg Temp</div>
+                                <div class="stat-value" id="avgTemp">--</div>
+                                <div class="stat-unit">°C</div>
+                                <div class="stat-trend neutral" id="tempTrend">Stable</div>
+                                <div class="mini-chart">
+                                    <canvas class="chart-canvas" id="tempChart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- System Load -->
+                            <div class="stat-item">
+                                <div class="stat-icon">
+                                    <i class="fas fa-microchip"></i>
+                                </div>
+                                <div class="stat-label">System Load</div>
+                                <div class="stat-value" id="systemLoad">--</div>
+                                <div class="stat-unit">%</div>
+                                <div class="stat-trend neutral" id="loadTrend">Idle</div>
+                                <div class="mini-chart">
+                                    <canvas class="chart-canvas" id="loadChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <p>Battery Failure Monitoring System v2.0</p>
+                    <p class="footer-sub">Real-time Monitoring & Protection</p>
+                </div>
+                <div class="footer-right">
+                    <div class="connection-status">
+                        <i class="fas fa-wifi" id="wifiIcon"></i>
+                        <span id="connectionStatus">Connecting...</span>
+                    </div>
+                    <div class="footer-links">
+                        <a href="#"><i class="fas fa-cog"></i> Settings</a>
+                        <a href="#"><i class="fas fa-history"></i> History</a>
+                        <a href="#"><i class="fas fa-question-circle"></i> Help</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal" id="faultDetailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Fault Details</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="fault-detail" id="faultDetailContent">
+                    <!-- Dynamic content will be inserted here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary modal-close">Close</button>
+                <button class="btn btn-primary" id="resolveFaultBtn">Mark as Resolved</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            databaseURL: "https://battery-failure-monitor-default-rtdb.asia-southeast1.firebasedatabase.app/"
         };
 
-        // Faults Chart
-        const faultsCtx = document.getElementById('faultsChart').getContext('2d');
-        faultsChart = new Chart(faultsCtx, {
-            type: 'line',
-            data: {
-                labels: Array.from({length: 10}, (_, i) => i),
-                datasets: [{
-                    data: Array(10).fill(0),
-                    borderColor: '#f72585',
-                    backgroundColor: 'rgba(247, 37, 133, 0.1)',
-                    fill: true
-                }]
-            },
-            options: chartOptions
-        });
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
 
-        // Temperature Chart
-        const tempCtx = document.getElementById('tempChart').getContext('2d');
-        tempChart = new Chart(tempCtx, {
-            type: 'line',
-            data: {
-                labels: Array.from({length: 10}, (_, i) => i),
-                datasets: [{
-                    data: Array(10).fill(0),
-                    borderColor: '#4cc9f0',
-                    backgroundColor: 'rgba(76, 201, 240, 0.1)',
-                    fill: true
-                }]
-            },
-            options: chartOptions
-        });
+        // State variables
+        let systemState = {
+            alert: false,
+            lastUpdate: null,
+            faults: [],
+            connectionStatus: 'disconnected',
+            temperatureHistory: [],
+            loadHistory: [],
+            faultHistory: [],
+            startTime: Date.now(),
+            lastStatsUpdate: Date.now(),
+            buzzerActive: false,
+            liveData: null
+        };
 
-        // Load Chart
-        const loadCtx = document.getElementById('loadChart').getContext('2d');
-        loadChart = new Chart(loadCtx, {
-            type: 'line',
-            data: {
-                labels: Array.from({length: 10}, (_, i) => i),
-                datasets: [{
-                    data: Array(10).fill(0),
-                    borderColor: '#4361ee',
-                    backgroundColor: 'rgba(67, 97, 238, 0.1)',
-                    fill: true
-                }]
-            },
-            options: chartOptions
-        });
-    }
+        // Charts
+        let faultsChart = null;
+        let tempChart = null;
+        let loadChart = null;
 
-    // Connect to Firebase
-    function connectToFirebase() {
-        const liveDataRef = database.ref('/battery_monitor/live');
-        const faultLogRef = database.ref('/fault_log');
-        
-        console.log("Connecting to Firebase...");
-        
-        // Monitor connection status
-        database.ref('.info/connected').on('value', (snapshot) => {
-            const connected = snapshot.val();
-            systemState.connectionStatus = connected ? 'connected' : 'disconnected';
-            updateConnectionStatus();
+        // DOM Elements
+        const elements = {
+            systemStatus: document.getElementById('systemStatus'),
+            statusDot: document.querySelector('.status-dot'),
+            statusText: document.querySelector('.status-text'),
+            lastUpdate: document.getElementById('lastUpdate'),
             
-            if (connected) {
-                console.log("✅ Connected to Firebase");
-            } else {
-                console.log("❌ Disconnected from Firebase");
-            }
-        });
-        
-        // Listen for live data updates
-        liveDataRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                systemState.liveData = data;
-                updateDashboard(data);
-                systemState.lastUpdate = new Date();
-                updateLastUpdate();
-            } else {
-                console.log("No live data received from Firebase");
-            }
-        }, (error) => {
-            console.error("Error reading live data:", error);
-        });
-        
-        // Listen for fault log updates
-        faultLogRef.on('value', (snapshot) => {
-            const faults = snapshot.val();
-            if (faults) {
-                systemState.faults = Object.values(faults);
-                console.log(`Loaded ${systemState.faults.length} faults from Firebase`);
-                updateFaultList();
-                updateStats();
-            } else {
-                systemState.faults = [];
-                console.log("No faults in database");
-                updateFaultList();
-                updateStats();
-            }
-        }, (error) => {
-            console.error("Error reading fault log:", error);
-        });
-    }
+            // Battery elements
+            cell1: document.getElementById('cell1'),
+            cell2: document.getElementById('cell2'),
+            cell3: document.getElementById('cell3'),
+            progress1: document.getElementById('progress1'),
+            progress2: document.getElementById('progress2'),
+            progress3: document.getElementById('progress3'),
+            totalVoltage: document.getElementById('totalVoltage'),
+            
+            // Temperature elements
+            irTemp: document.getElementById('irTemp'),
+            batTemp: document.getElementById('batTemp'),
+            irStatus: document.getElementById('irStatus'),
+            batStatus: document.getElementById('batStatus'),
+            irGauge: document.getElementById('irGauge'),
+            batGauge: document.getElementById('batGauge'),
+            
+            // Gas elements
+            gas1: document.getElementById('gas1'),
+            gas2: document.getElementById('gas2'),
+            gas1Status: document.getElementById('gas1Status'),
+            gas2Status: document.getElementById('gas2Status'),
+            gas1Indicator: document.getElementById('gas1Indicator'),
+            gas2Indicator: document.getElementById('gas2Indicator'),
+            
+            // Control elements
+            fanSpeed: document.getElementById('fanSpeed'),
+            fanAnimation: document.getElementById('fanAnimation'),
+            relayStatus: document.getElementById('relayStatus'),
+            relayIndicator: document.getElementById('relayIndicator'),
+            buzzerStatus: document.getElementById('buzzerStatus'),
+            buzzerIndicator: document.getElementById('buzzerIndicator'),
+            
+            // Fault elements
+            faultList: document.getElementById('faultList'),
+            refreshFaults: document.getElementById('refreshFaults'),
+            
+            // Stats elements
+            uptime: document.getElementById('uptime'),
+            uptimeTrend: document.getElementById('uptimeTrend'),
+            faultsToday: document.getElementById('faultsToday'),
+            faultsTrend: document.getElementById('faultsTrend'),
+            avgTemp: document.getElementById('avgTemp'),
+            tempTrend: document.getElementById('tempTrend'),
+            systemLoad: document.getElementById('systemLoad'),
+            loadTrend: document.getElementById('loadTrend'),
+            
+            // Connection elements
+            wifiIcon: document.getElementById('wifiIcon'),
+            connectionStatus: document.getElementById('connectionStatus'),
+            
+            // Modal elements
+            modal: document.getElementById('faultDetailModal'),
+            modalClose: document.querySelector('.modal-close'),
+            faultDetailContent: document.getElementById('faultDetailContent'),
+            resolveFaultBtn: document.getElementById('resolveFaultBtn')
+        };
 
-    // Update dashboard with live data
-    function updateDashboard(data) {
-        // Update system status
-        systemState.alert = data.system_alert || false;
-        updateSystemStatus();
-        
-        // Update battery data
-        updateBatteryData(data);
-        
-        // Update temperature data
-        updateTemperatureData(data);
-        
-        // Update gas data
-        updateGasData(data);
-        
-        // Update control data
-        updateControlData(data);
-        
-        // Update statistics
-        updateStatistics(data);
-    }
-
-    // Update battery data
-    function updateBatteryData(data) {
-        const bat1 = data.battery?.cell1_v || 0;
-        const bat2 = data.battery?.cell2_v || 0;
-        const bat3 = data.battery?.cell3_v || 0;
-        
-        // Update cell voltages
-        elements.cell1.textContent = bat1.toFixed(2) + ' V';
-        elements.cell2.textContent = bat2.toFixed(2) + ' V';
-        elements.cell3.textContent = bat3.toFixed(2) + ' V';
-        
-        // Update progress bars (assuming 3.0V min, 4.25V max)
-        elements.progress1.style.width = Math.min(Math.max((bat1 - 3.0) / (4.25 - 3.0) * 100, 0), 100) + '%';
-        elements.progress2.style.width = Math.min(Math.max((bat2 - 3.0) / (4.25 - 3.0) * 100, 0), 100) + '%';
-        elements.progress3.style.width = Math.min(Math.max((bat3 - 3.0) / (4.25 - 3.0) * 100, 0), 100) + '%';
-        
-        // Update total voltage
-        const totalV = bat1 + bat2 + bat3;
-        elements.totalVoltage.textContent = totalV.toFixed(2) + ' V';
-        
-        // Change color based on voltage
-        updateElementColor(elements.cell1, bat1, 3.0, 4.25);
-        updateElementColor(elements.cell2, bat2, 3.0, 4.25);
-        updateElementColor(elements.cell3, bat3, 3.0, 4.25);
-    }
-
-    // Update temperature data - Unified design
-    function updateTemperatureData(data) {
-        const irTemp = data.ir_temp_c || 0;
-        const batTemp = data.battery_temp_c || 0;
-        
-        // Update temperature values
-        elements.irTemp.textContent = irTemp.toFixed(1);
-        elements.batTemp.textContent = batTemp.toFixed(1);
-        
-        // Update gauges (assuming 0-100°C range)
-        elements.irGauge.style.width = Math.min((irTemp / 100) * 100, 100) + '%';
-        elements.batGauge.style.width = Math.min((batTemp / 100) * 100, 100) + '%';
-        
-        // Update status and color for IR Sensor
-        updateTemperatureStatus(elements.irTemp, elements.irStatus, irTemp, 60);
-        
-        // Update status and color for Battery Temp
-        updateTemperatureStatus(elements.batTemp, elements.batStatus, batTemp, 55);
-    }
-
-    // Update temperature status
-    function updateTemperatureStatus(element, statusElement, temp, limit) {
-        // Change color based on temperature
-        if (temp < limit * 0.7) {
-            element.style.color = '#4cc9f0'; // Safe
-            statusElement.textContent = 'NORMAL';
-            statusElement.className = 'temp-status';
-        } else if (temp < limit * 0.9) {
-            element.style.color = '#f8961e'; // Warning
-            statusElement.textContent = 'WARNING';
-            statusElement.className = 'temp-status warning';
-        } else {
-            element.style.color = '#f72585'; // Danger
-            statusElement.textContent = 'ALERT';
-            statusElement.className = 'temp-status danger';
+        // Initialize the application
+        function init() {
+            console.log("Initializing Battery Monitoring System...");
+            setupEventListeners();
+            initializeCharts();
+            connectToFirebase();
+            startUptimeCounter();
+            loadFaults();
         }
-    }
 
-    // Update gas data - Unified design
-    function updateGasData(data) {
-        const gas1 = data.gas1_percent || 0;
-        const gas2 = data.gas2_percent || 0;
-        
-        elements.gas1.textContent = gas1;
-        elements.gas2.textContent = gas2;
-        
-        elements.gas1Indicator.style.width = gas1 + '%';
-        elements.gas2Indicator.style.width = gas2 + '%';
-        
-        // Update status and color for Gas Sensor 1
-        updateGasStatus(elements.gas1, elements.gas1Status, gas1, 50);
-        
-        // Update status and color for Gas Sensor 2
-        updateGasStatus(elements.gas2, elements.gas2Status, gas2, 50);
-    }
-
-    // Update gas status
-    function updateGasStatus(element, statusElement, gasLevel, limit) {
-        // Change color based on gas level
-        if (gasLevel < limit * 0.5) {
-            element.style.color = '#4cc9f0'; // Safe
-            statusElement.textContent = 'SAFE';
-            statusElement.className = 'gas-status';
-        } else if (gasLevel < limit * 0.8) {
-            element.style.color = '#f8961e'; // Warning
-            statusElement.textContent = 'WARNING';
-            statusElement.className = 'gas-status warning';
-        } else {
-            element.style.color = '#f72585'; // Danger
-            statusElement.textContent = 'ALERT';
-            statusElement.className = 'gas-status danger';
+        // Setup event listeners
+        function setupEventListeners() {
+            // Filter buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    filterFaults(btn.dataset.filter);
+                });
+            });
+            
+            // Refresh faults button
+            elements.refreshFaults.addEventListener('click', loadFaults);
+            
+            // Modal close buttons
+            document.querySelectorAll('.modal-close').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    elements.modal.classList.remove('active');
+                });
+            });
+            
+            // Close modal on background click
+            elements.modal.addEventListener('click', (e) => {
+                if (e.target === elements.modal) {
+                    elements.modal.classList.remove('active');
+                }
+            });
+            
+            // Resolve fault button
+            elements.resolveFaultBtn.addEventListener('click', resolveCurrentFault);
         }
-    }
 
-    // Update control data - FIXED BUZZER STATUS
-    function updateControlData(data) {
-        const fanSpeed = data.fan_speed_percent || 0;
-        const relayStatus = data.relay_status === 'ON';
-        const buzzerStatus = data.buzzer_status === 'ACTIVE' || data.system_alert; // Get buzzer status
-        
-        elements.fanSpeed.textContent = fanSpeed + ' %';
-        elements.relayStatus.textContent = relayStatus ? 'ON' : 'OFF';
-        elements.buzzerStatus.textContent = buzzerStatus ? 'ACTIVE' : 'INACTIVE';
-        
-        console.log("Buzzer Status Update:", {
-            buzzer_status: data.buzzer_status,
-            system_alert: data.system_alert,
-            calculated: buzzerStatus
-        });
-        
-        // Update animations and indicators
-        if (fanSpeed > 0) {
-            elements.fanAnimation.classList.add('active');
-            elements.fanAnimation.style.animationDuration = (2 - (fanSpeed / 100)) + 's';
-        } else {
-            elements.fanAnimation.classList.remove('active');
+        // Initialize charts
+        function initializeCharts() {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                },
+                scales: {
+                    x: { display: false },
+                    y: { display: false }
+                },
+                elements: {
+                    point: { radius: 0 },
+                    line: { 
+                        tension: 0.4,
+                        borderWidth: 2
+                    }
+                }
+            };
+
+            // Faults Chart
+            const faultsCtx = document.getElementById('faultsChart').getContext('2d');
+            faultsChart = new Chart(faultsCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 10}, (_, i) => i),
+                    datasets: [{
+                        data: Array(10).fill(0),
+                        borderColor: '#f72585',
+                        backgroundColor: 'rgba(247, 37, 133, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // Temperature Chart
+            const tempCtx = document.getElementById('tempChart').getContext('2d');
+            tempChart = new Chart(tempCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 10}, (_, i) => i),
+                    datasets: [{
+                        data: Array(10).fill(0),
+                        borderColor: '#4cc9f0',
+                        backgroundColor: 'rgba(76, 201, 240, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // Load Chart
+            const loadCtx = document.getElementById('loadChart').getContext('2d');
+            loadChart = new Chart(loadCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: 10}, (_, i) => i),
+                    datasets: [{
+                        data: Array(10).fill(0),
+                        borderColor: '#4361ee',
+                        backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
         }
-        
-        elements.relayIndicator.classList.toggle('on', relayStatus);
-        elements.buzzerIndicator.classList.toggle('active', buzzerStatus);
-        
-        // Update system state
-        systemState.buzzerActive = buzzerStatus;
-    }
 
-    // Update system status
-    function updateSystemStatus() {
-        if (systemState.alert) {
-            elements.statusDot.className = 'status-dot alert';
-            elements.statusText.textContent = 'ALERT - System in Fault State';
-            elements.systemStatus.style.background = '#fee';
-        } else {
-            elements.statusDot.className = 'status-dot safe';
-            elements.statusText.textContent = 'SAFE - System Normal';
-            elements.systemStatus.style.background = '#e6f7ff';
-        }
-    }
-
-    // Update last update time
-    function updateLastUpdate() {
-        if (systemState.lastUpdate) {
-            const timeDiff = Math.floor((new Date() - systemState.lastUpdate) / 1000);
-            if (timeDiff < 60) {
-                elements.lastUpdate.textContent = `Updated: ${timeDiff} seconds ago`;
-            } else if (timeDiff < 3600) {
-                elements.lastUpdate.textContent = `Updated: ${Math.floor(timeDiff / 60)} minutes ago`;
-            } else {
-                elements.lastUpdate.textContent = `Updated: ${systemState.lastUpdate.toLocaleTimeString()}`;
-            }
-        }
-    }
-
-    // Update connection status
-    function updateConnectionStatus() {
-        if (systemState.connectionStatus === 'connected') {
-            elements.wifiIcon.className = 'fas fa-wifi connected';
-            elements.connectionStatus.textContent = 'Connected';
-            elements.connectionStatus.style.color = '#4cc9f0';
-        } else {
-            elements.wifiIcon.className = 'fas fa-wifi disconnected';
-            elements.connectionStatus.textContent = 'Disconnected';
-            elements.connectionStatus.style.color = '#f72585';
-        }
-    }
-
-    // Load faults from Firebase
-    function loadFaults() {
-        console.log("Loading faults from Firebase...");
-        database.ref('/fault_log').once('value')
-            .then(snapshot => {
+        // Connect to Firebase
+        function connectToFirebase() {
+            const liveDataRef = database.ref('/battery_monitor/live');
+            const faultLogRef = database.ref('/fault_log');
+            
+            console.log("Connecting to Firebase...");
+            
+            // Monitor connection status
+            database.ref('.info/connected').on('value', (snapshot) => {
+                const connected = snapshot.val();
+                systemState.connectionStatus = connected ? 'connected' : 'disconnected';
+                updateConnectionStatus();
+                
+                if (connected) {
+                    console.log("✅ Connected to Firebase");
+                } else {
+                    console.log("❌ Disconnected from Firebase");
+                }
+            });
+            
+            // Listen for live data updates
+            liveDataRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    systemState.liveData = data;
+                    updateDashboard(data);
+                    systemState.lastUpdate = new Date();
+                    updateLastUpdate();
+                }
+            }, (error) => {
+                console.error("Error reading live data:", error);
+            });
+            
+            // Listen for fault log updates
+            faultLogRef.on('value', (snapshot) => {
                 const faults = snapshot.val();
                 if (faults) {
                     systemState.faults = Object.values(faults);
-                    console.log(`Loaded ${systemState.faults.length} faults`);
+                    console.log(`Loaded ${systemState.faults.length} faults from Firebase`);
+                    updateFaultList();
+                    updateStats();
                 } else {
                     systemState.faults = [];
-                    console.log("No faults found");
+                    console.log("No faults in database");
+                    updateFaultList();
+                    updateStats();
                 }
-                updateFaultList();
-                updateStats();
-            })
-            .catch(error => {
-                console.error('Error loading faults:', error);
-                showNotification('Error loading faults', 'error');
+            }, (error) => {
+                console.error("Error reading fault log:", error);
             });
-    }
-
-    // Update fault list - IMPROVED WITH BETTER ERROR HANDLING
-    function updateFaultList() {
-        const faultList = elements.faultList;
-        const activeFilter = document.querySelector('.filter-btn.active')?.dataset.filter || 'all';
-        
-        console.log("Updating fault list:", {
-            totalFaults: systemState.faults.length,
-            filter: activeFilter
-        });
-        
-        if (systemState.faults.length === 0) {
-            faultList.innerHTML = `
-                <div class="fault-empty">
-                    <i class="fas fa-check-circle"></i>
-                    <p>No faults detected</p>
-                    <small>System is operating normally</small>
-                </div>
-            `;
-            return;
         }
-        
-        // Sort faults by timestamp (newest first)
-        const sortedFaults = [...systemState.faults].sort((a, b) => {
-            const timeA = new Date(a.timestamp || 0).getTime();
-            const timeB = new Date(b.timestamp || 0).getTime();
-            return timeB - timeA;
-        });
-        
-        // Filter faults
-        const filteredFaults = sortedFaults.filter(fault => {
-            if (activeFilter === 'all') return true;
-            if (activeFilter === 'active') return !fault.resolved;
-            if (activeFilter === 'resolved') return fault.resolved;
-            return true;
-        });
-        
-        if (filteredFaults.length === 0) {
-            faultList.innerHTML = `
-                <div class="fault-empty">
-                    <i class="fas fa-check-circle"></i>
-                    <p>No ${activeFilter === 'active' ? 'active' : 'resolved'} faults</p>
-                </div>
-            `;
-            return;
-        }
-        
-        faultList.innerHTML = filteredFaults.map(fault => createFaultElement(fault)).join('');
-        
-        // Add click event listeners to fault items
-        document.querySelectorAll('.fault-item').forEach(item => {
-            item.addEventListener('click', () => showFaultDetail(item.dataset.faultId));
-        });
-    }
 
-    // Create fault element
-    function createFaultElement(fault) {
-        const faultTypeIcons = {
-            'HIGH_TEMPERATURE_IR': 'fas fa-thermometer-full',
-            'HIGH_TEMPERATURE_BATTERY': 'fas fa-fire',
-            'GAS_LEAK_1': 'fas fa-wind',
-            'GAS_LEAK_2': 'fas fa-smog',
-            'BATTERY_VOLTAGE_FAULT_1': 'fas fa-bolt',
-            'BATTERY_VOLTAGE_FAULT_2': 'fas fa-bolt',
-            'BATTERY_VOLTAGE_FAULT_3': 'fas fa-bolt'
-        };
-        
-        const faultTypeColors = {
-            'HIGH_TEMPERATURE_IR': '#f72585',
-            'HIGH_TEMPERATURE_BATTERY': '#f8961e',
-            'GAS_LEAK_1': '#4361ee',
-            'GAS_LEAK_2': '#7209b7',
-            'BATTERY_VOLTAGE_FAULT_1': '#4cc9f0',
-            'BATTERY_VOLTAGE_FAULT_2': '#4cc9f0',
-            'BATTERY_VOLTAGE_FAULT_3': '#4cc9f0'
-        };
-        
-        const icon = faultTypeIcons[fault.faultType] || 'fas fa-exclamation-triangle';
-        const resolvedClass = fault.resolved ? 'resolved' : '';
-        const date = fault.timestamp ? new Date(fault.timestamp) : new Date();
-        const timeString = date.toLocaleString();
-        const borderColor = faultTypeColors[fault.faultType] || '#f72585';
-        
-        return `
-            <div class="fault-item ${resolvedClass}" data-fault-id="${fault.id}" style="border-left-color: ${borderColor}">
-                <div class="fault-header">
-                    <div class="fault-title">
-                        <i class="${icon}" style="color: ${borderColor}"></i>
-                        ${getFaultTitle(fault.faultType)}
-                    </div>
-                    <div class="fault-time">${timeString}</div>
-                </div>
-                <div class="fault-desc">${fault.description || 'No description available'}</div>
-                ${fault.value ? `<div class="fault-value">Value: ${fault.value}${getFaultUnit(fault.faultType)}</div>` : ''}
-                ${fault.resolved ? '<div class="fault-resolved"><i class="fas fa-check"></i> Resolved</div>' : ''}
-            </div>
-        `;
-    }
-
-    // Get fault title from type
-    function getFaultTitle(faultType) {
-        const titles = {
-            'HIGH_TEMPERATURE_IR': 'High IR Temperature',
-            'HIGH_TEMPERATURE_BATTERY': 'High Battery Temperature',
-            'GAS_LEAK_1': 'Gas Leak - Sensor 1',
-            'GAS_LEAK_2': 'Gas Leak - Sensor 2',
-            'BATTERY_VOLTAGE_FAULT_1': 'Battery Cell 1 Fault',
-            'BATTERY_VOLTAGE_FAULT_2': 'Battery Cell 2 Fault',
-            'BATTERY_VOLTAGE_FAULT_3': 'Battery Cell 3 Fault'
-        };
-        return titles[faultType] || faultType;
-    }
-
-    // Get fault unit from type
-    function getFaultUnit(faultType) {
-        if (faultType.includes('TEMPERATURE')) return '°C';
-        if (faultType.includes('VOLTAGE')) return 'V';
-        if (faultType.includes('GAS')) return ' units';
-        return '';
-    }
-
-    // Filter faults
-    function filterFaults(filter) {
-        updateFaultList();
-    }
-
-    // Show fault detail modal
-    function showFaultDetail(faultId) {
-        const fault = systemState.faults.find(f => f.id === faultId);
-        if (!fault) {
-            showNotification('Fault details not found', 'error');
-            return;
-        }
-        
-        const date = new Date(fault.timestamp);
-        const resolvedDate = fault.resolvedAt ? new Date(fault.resolvedAt) : null;
-        
-        elements.faultDetailContent.innerHTML = `
-            <div class="fault-detail-content">
-                <div class="detail-item">
-                    <label>Fault ID:</label>
-                    <strong>${fault.id || 'N/A'}</strong>
-                </div>
-                <div class="detail-item">
-                    <label>Fault Type:</label>
-                    <strong>${getFaultTitle(fault.faultType)}</strong>
-                </div>
-                <div class="detail-item">
-                    <label>Description:</label>
-                    <p>${fault.description || 'No description available'}</p>
-                </div>
-                ${fault.value ? `
-                <div class="detail-item">
-                    <label>Measured Value:</label>
-                    <strong>${fault.value} ${getFaultUnit(fault.faultType)}</strong>
-                </div>
-                ` : ''}
-                <div class="detail-item">
-                    <label>Detected At:</label>
-                    <strong>${date.toLocaleString()}</strong>
-                </div>
-                ${resolvedDate ? `
-                <div class="detail-item">
-                    <label>Resolved At:</label>
-                    <strong>${resolvedDate.toLocaleString()}</strong>
-                </div>
-                ` : ''}
-                <div class="detail-item">
-                    <label>Status:</label>
-                    <strong class="${fault.resolved ? 'status-resolved' : 'status-active'}">
-                        ${fault.resolved ? 'Resolved' : 'Active'}
-                    </strong>
-                </div>
-            </div>
-        `;
-        
-        elements.resolveFaultBtn.dataset.faultId = faultId;
-        elements.resolveFaultBtn.disabled = fault.resolved;
-        elements.modal.classList.add('active');
-    }
-
-    // Resolve current fault
-    function resolveCurrentFault() {
-        const faultId = elements.resolveFaultBtn.dataset.faultId;
-        if (!faultId) {
-            showNotification('No fault selected', 'error');
-            return;
-        }
-        
-        console.log("Resolving fault:", faultId);
-        
-        database.ref(`/fault_log/${faultId}`).update({
-            resolved: true,
-            resolvedAt: new Date().toISOString()
-        })
-        .then(() => {
-            showNotification('Fault marked as resolved', 'success');
-            elements.modal.classList.remove('active');
-            // Reload faults to update the list
-            loadFaults();
-        })
-        .catch(error => {
-            console.error('Error resolving fault:', error);
-            showNotification('Error resolving fault', 'error');
-        });
-    }
-
-    // Update statistics
-    function updateStatistics(data) {
-        const now = Date.now();
-        const timeDiff = now - systemState.lastStatsUpdate;
-        
-        // Update every 5 seconds
-        if (timeDiff > 5000) {
-            systemState.lastStatsUpdate = now;
+        // Update dashboard with live data
+        function updateDashboard(data) {
+            // Update system status
+            systemState.alert = data.system_alert || false;
+            updateSystemStatus();
             
-            // Calculate average temperature from live data
+            // Update battery data
+            updateBatteryData(data);
+            
+            // Update temperature data
+            updateTemperatureData(data);
+            
+            // Update gas data
+            updateGasData(data);
+            
+            // Update control data (FIXED BUZZER STATUS)
+            updateControlData(data);
+            
+            // Update statistics
+            updateStatistics(data);
+        }
+
+        // Update battery data
+        function updateBatteryData(data) {
+            const bat1 = data.battery?.cell1_v || 0;
+            const bat2 = data.battery?.cell2_v || 0;
+            const bat3 = data.battery?.cell3_v || 0;
+            
+            // Update cell voltages
+            elements.cell1.textContent = bat1.toFixed(2) + ' V';
+            elements.cell2.textContent = bat2.toFixed(2) + ' V';
+            elements.cell3.textContent = bat3.toFixed(2) + ' V';
+            
+            // Update progress bars (assuming 3.0V min, 4.25V max)
+            elements.progress1.style.width = Math.min(Math.max((bat1 - 3.0) / (4.25 - 3.0) * 100, 0), 100) + '%';
+            elements.progress2.style.width = Math.min(Math.max((bat2 - 3.0) / (4.25 - 3.0) * 100, 0), 100) + '%';
+            elements.progress3.style.width = Math.min(Math.max((bat3 - 3.0) / (4.25 - 3.0) * 100, 0), 100) + '%';
+            
+            // Update total voltage
+            const totalV = bat1 + bat2 + bat3;
+            elements.totalVoltage.textContent = totalV.toFixed(2) + ' V';
+            
+            // Change color based on voltage
+            updateElementColor(elements.cell1, bat1, 3.0, 4.25);
+            updateElementColor(elements.cell2, bat2, 3.0, 4.25);
+            updateElementColor(elements.cell3, bat3, 3.0, 4.25);
+        }
+
+        // Update temperature data
+        function updateTemperatureData(data) {
             const irTemp = data.ir_temp_c || 0;
             const batTemp = data.battery_temp_c || 0;
-            const avgTemp = (irTemp + batTemp) / 2;
-            elements.avgTemp.textContent = avgTemp.toFixed(1);
             
-            // Update temperature history for chart
-            updateChartData(tempChart, avgTemp);
+            // Update temperature values
+            elements.irTemp.textContent = irTemp.toFixed(1);
+            elements.batTemp.textContent = batTemp.toFixed(1);
             
-            // Calculate system load from live data
-            const systemLoad = data.stats?.system_load || 0;
-            elements.systemLoad.textContent = systemLoad.toFixed(0);
+            // Update gauges (assuming 0-100°C range)
+            elements.irGauge.style.width = Math.min((irTemp / 100) * 100, 100) + '%';
+            elements.batGauge.style.width = Math.min((batTemp / 100) * 100, 100) + '%';
             
-            // Update load history for chart
-            updateChartData(loadChart, systemLoad);
+            // Update status and color for IR Sensor
+            updateTemperatureStatus(elements.irTemp, elements.irStatus, irTemp, 60);
             
-            // Update temperature trend
-            updateTrendIndicator(elements.tempTrend, systemState.temperatureHistory, avgTemp, '°C');
-            
-            // Update load trend
-            updateTrendIndicator(elements.loadTrend, systemState.loadHistory, systemLoad, '%');
-            
-            // Store history data
-            systemState.temperatureHistory.push({
-                timestamp: now,
-                value: avgTemp
-            });
-            
-            systemState.loadHistory.push({
-                timestamp: now,
-                value: systemLoad
-            });
-            
-            // Keep only last 100 data points
-            if (systemState.temperatureHistory.length > 100) {
-                systemState.temperatureHistory.shift();
-            }
-            if (systemState.loadHistory.length > 100) {
-                systemState.loadHistory.shift();
+            // Update status and color for Battery Temp
+            updateTemperatureStatus(elements.batTemp, elements.batStatus, batTemp, 55);
+        }
+
+        // Update temperature status
+        function updateTemperatureStatus(element, statusElement, temp, limit) {
+            // Change color based on temperature
+            if (temp < limit * 0.7) {
+                element.style.color = '#4cc9f0';
+                statusElement.textContent = 'NORMAL';
+                statusElement.className = 'temp-status';
+            } else if (temp < limit * 0.9) {
+                element.style.color = '#f8961e';
+                statusElement.textContent = 'WARNING';
+                statusElement.className = 'temp-status warning';
+            } else {
+                element.style.color = '#f72585';
+                statusElement.textContent = 'ALERT';
+                statusElement.className = 'temp-status danger';
             }
         }
-    }
 
-    // Update chart data
-    function updateChartData(chart, newValue) {
-        if (!chart) return;
-        
-        if (chart.data.datasets[0].data.length >= 10) {
-            chart.data.datasets[0].data.shift();
+        // Update gas data
+        function updateGasData(data) {
+            const gas1 = data.gas1_percent || 0;
+            const gas2 = data.gas2_percent || 0;
+            
+            elements.gas1.textContent = gas1;
+            elements.gas2.textContent = gas2;
+            
+            elements.gas1Indicator.style.width = gas1 + '%';
+            elements.gas2Indicator.style.width = gas2 + '%';
+            
+            // Update status and color for Gas Sensor 1
+            updateGasStatus(elements.gas1, elements.gas1Status, gas1, 50);
+            
+            // Update status and color for Gas Sensor 2
+            updateGasStatus(elements.gas2, elements.gas2Status, gas2, 50);
         }
-        chart.data.datasets[0].data.push(newValue);
-        chart.update('none');
-    }
 
-    // Update trend indicator
-    function updateTrendIndicator(element, history, currentValue, unit) {
-        if (history.length < 2) {
-            element.textContent = 'Stable';
-            element.className = 'stat-trend neutral';
-            return;
+        // Update gas status
+        function updateGasStatus(element, statusElement, gasLevel, limit) {
+            // Change color based on gas level
+            if (gasLevel < limit * 0.5) {
+                element.style.color = '#4cc9f0';
+                statusElement.textContent = 'SAFE';
+                statusElement.className = 'gas-status';
+            } else if (gasLevel < limit * 0.8) {
+                element.style.color = '#f8961e';
+                statusElement.textContent = 'WARNING';
+                statusElement.className = 'gas-status warning';
+            } else {
+                element.style.color = '#f72585';
+                statusElement.textContent = 'ALERT';
+                statusElement.className = 'gas-status danger';
+            }
         }
-        
-        const prevValue = history[history.length - 1]?.value || 0;
-        const diff = currentValue - prevValue;
-        const percentChange = prevValue > 0 ? (diff / prevValue) * 100 : 0;
-        
-        if (Math.abs(percentChange) < 0.5) {
-            element.textContent = 'Stable';
-            element.className = 'stat-trend neutral';
-        } else if (percentChange > 0) {
-            element.textContent = `+${percentChange.toFixed(1)}%`;
-            element.className = 'stat-trend positive';
-        } else {
-            element.textContent = `${percentChange.toFixed(1)}%`;
-            element.className = 'stat-trend negative';
-        }
-    }
 
-    // Update stats
-    function updateStats() {
-        // Update faults today from live data
-        const faultsToday = systemState.liveData?.stats?.faults_today || 0;
-        elements.faultsToday.textContent = faultsToday;
-        
-        // Update fault chart
-        if (faultsChart) {
-            updateChartData(faultsChart, faultsToday);
+        // Update control data - FIXED BUZZER STATUS
+        function updateControlData(data) {
+            const fanSpeed = data.fan_speed_percent || 0;
+            const relayStatus = data.relay_status === 'ON';
+            const buzzerStatus = data.buzzer_status === 'ACTIVE' || data.system_alert;
+            
+            elements.fanSpeed.textContent = fanSpeed + ' %';
+            elements.relayStatus.textContent = relayStatus ? 'ON' : 'OFF';
+            elements.buzzerStatus.textContent = buzzerStatus ? 'ACTIVE' : 'INACTIVE';
+            
+            console.log("Control Update:", {
+                fanSpeed,
+                relayStatus,
+                buzzerStatus,
+                buzzer_status: data.buzzer_status,
+                system_alert: data.system_alert
+            });
+            
+            // Update animations and indicators
+            if (fanSpeed > 0) {
+                elements.fanAnimation.classList.add('active');
+                elements.fanAnimation.style.animationDuration = (2 - (fanSpeed / 100)) + 's';
+            } else {
+                elements.fanAnimation.classList.remove('active');
+            }
+            
+            elements.relayIndicator.classList.toggle('on', relayStatus);
+            elements.buzzerIndicator.classList.toggle('active', buzzerStatus);
+            
+            // Update system state
+            systemState.buzzerActive = buzzerStatus;
         }
-        
-        // Update fault trend
-        const activeFaults = systemState.faults.filter(f => !f.resolved).length;
-        if (activeFaults > 0) {
-            elements.faultsTrend.textContent = `${activeFaults} active`;
-            elements.faultsTrend.className = 'stat-trend negative';
-        } else {
-            elements.faultsTrend.textContent = 'No active faults';
-            elements.faultsTrend.className = 'stat-trend positive';
-        }
-    }
 
-    // Start uptime counter
-    function startUptimeCounter() {
-        setInterval(() => {
+        // Update system status
+        function updateSystemStatus() {
+            if (systemState.alert) {
+                elements.statusDot.className = 'status-dot alert';
+                elements.statusText.textContent = 'ALERT - System in Fault State';
+                elements.systemStatus.style.background = '#fee';
+            } else {
+                elements.statusDot.className = 'status-dot safe';
+                elements.statusText.textContent = 'SAFE - System Normal';
+                elements.systemStatus.style.background = '#e6f7ff';
+            }
+        }
+
+        // Update last update time
+        function updateLastUpdate() {
+            if (systemState.lastUpdate) {
+                const timeDiff = Math.floor((new Date() - systemState.lastUpdate) / 1000);
+                if (timeDiff < 60) {
+                    elements.lastUpdate.textContent = `Updated: ${timeDiff} seconds ago`;
+                } else if (timeDiff < 3600) {
+                    elements.lastUpdate.textContent = `Updated: ${Math.floor(timeDiff / 60)} minutes ago`;
+                } else {
+                    elements.lastUpdate.textContent = `Updated: ${systemState.lastUpdate.toLocaleTimeString()}`;
+                }
+            }
+        }
+
+        // Update connection status
+        function updateConnectionStatus() {
+            if (systemState.connectionStatus === 'connected') {
+                elements.wifiIcon.className = 'fas fa-wifi connected';
+                elements.connectionStatus.textContent = 'Connected';
+                elements.connectionStatus.style.color = '#4cc9f0';
+            } else {
+                elements.wifiIcon.className = 'fas fa-wifi disconnected';
+                elements.connectionStatus.textContent = 'Disconnected';
+                elements.connectionStatus.style.color = '#f72585';
+            }
+        }
+
+        // Load faults from Firebase
+        function loadFaults() {
+            console.log("Loading faults from Firebase...");
+            database.ref('/fault_log').once('value')
+                .then(snapshot => {
+                    const faults = snapshot.val();
+                    if (faults) {
+                        systemState.faults = Object.values(faults);
+                        console.log(`Loaded ${systemState.faults.length} faults`);
+                    } else {
+                        systemState.faults = [];
+                        console.log("No faults found");
+                    }
+                    updateFaultList();
+                    updateStats();
+                })
+                .catch(error => {
+                    console.error('Error loading faults:', error);
+                    showNotification('Error loading faults', 'error');
+                });
+        }
+
+        // Update fault list
+        function updateFaultList() {
+            const faultList = elements.faultList;
+            const activeFilter = document.querySelector('.filter-btn.active')?.dataset.filter || 'all';
+            
+            console.log("Updating fault list:", {
+                totalFaults: systemState.faults.length,
+                filter: activeFilter
+            });
+            
+            if (systemState.faults.length === 0) {
+                faultList.innerHTML = `
+                    <div class="fault-empty">
+                        <i class="fas fa-check-circle"></i>
+                        <p>No faults detected</p>
+                        <small>System is operating normally</small>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort faults by timestamp (newest first)
+            const sortedFaults = [...systemState.faults].sort((a, b) => {
+                const timeA = new Date(a.timestamp || 0).getTime();
+                const timeB = new Date(b.timestamp || 0).getTime();
+                return timeB - timeA;
+            });
+            
+            // Filter faults
+            const filteredFaults = sortedFaults.filter(fault => {
+                if (activeFilter === 'all') return true;
+                if (activeFilter === 'active') return !fault.resolved;
+                if (activeFilter === 'resolved') return fault.resolved;
+                return true;
+            });
+            
+            if (filteredFaults.length === 0) {
+                faultList.innerHTML = `
+                    <div class="fault-empty">
+                        <i class="fas fa-check-circle"></i>
+                        <p>No ${activeFilter === 'active' ? 'active' : 'resolved'} faults</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            faultList.innerHTML = filteredFaults.map(fault => createFaultElement(fault)).join('');
+            
+            // Add click event listeners to fault items
+            document.querySelectorAll('.fault-item').forEach(item => {
+                item.addEventListener('click', () => showFaultDetail(item.dataset.faultId));
+            });
+        }
+
+        // Create fault element
+        function createFaultElement(fault) {
+            const faultTypeIcons = {
+                'HIGH_TEMPERATURE_IR': 'fas fa-thermometer-full',
+                'HIGH_TEMPERATURE_BATTERY': 'fas fa-fire',
+                'GAS_LEAK_1': 'fas fa-wind',
+                'GAS_LEAK_2': 'fas fa-smog',
+                'BATTERY_VOLTAGE_FAULT_1': 'fas fa-bolt',
+                'BATTERY_VOLTAGE_FAULT_2': 'fas fa-bolt',
+                'BATTERY_VOLTAGE_FAULT_3': 'fas fa-bolt'
+            };
+            
+            const faultTypeColors = {
+                'HIGH_TEMPERATURE_IR': '#f72585',
+                'HIGH_TEMPERATURE_BATTERY': '#f8961e',
+                'GAS_LEAK_1': '#4361ee',
+                'GAS_LEAK_2': '#7209b7',
+                'BATTERY_VOLTAGE_FAULT_1': '#4cc9f0',
+                'BATTERY_VOLTAGE_FAULT_2': '#4cc9f0',
+                'BATTERY_VOLTAGE_FAULT_3': '#4cc9f0'
+            };
+            
+            const icon = faultTypeIcons[fault.faultType] || 'fas fa-exclamation-triangle';
+            const resolvedClass = fault.resolved ? 'resolved' : '';
+            const date = fault.timestamp ? new Date(fault.timestamp) : new Date();
+            const timeString = date.toLocaleString();
+            const borderColor = faultTypeColors[fault.faultType] || '#f72585';
+            
+            return `
+                <div class="fault-item ${resolvedClass}" data-fault-id="${fault.id}" style="border-left-color: ${borderColor}">
+                    <div class="fault-header">
+                        <div class="fault-title">
+                            <i class="${icon}" style="color: ${borderColor}"></i>
+                            ${getFaultTitle(fault.faultType)}
+                        </div>
+                        <div class="fault-time">${timeString}</div>
+                    </div>
+                    <div class="fault-desc">${fault.description || 'No description available'}</div>
+                    ${fault.value ? `<div class="fault-value">Value: ${fault.value}${getFaultUnit(fault.faultType)}</div>` : ''}
+                    ${fault.resolved ? '<div class="fault-resolved"><i class="fas fa-check"></i> Resolved</div>' : ''}
+                </div>
+            `;
+        }
+
+        // Get fault title from type
+        function getFaultTitle(faultType) {
+            const titles = {
+                'HIGH_TEMPERATURE_IR': 'High IR Temperature',
+                'HIGH_TEMPERATURE_BATTERY': 'High Battery Temperature',
+                'GAS_LEAK_1': 'Gas Leak - Sensor 1',
+                'GAS_LEAK_2': 'Gas Leak - Sensor 2',
+                'BATTERY_VOLTAGE_FAULT_1': 'Battery Cell 1 Fault',
+                'BATTERY_VOLTAGE_FAULT_2': 'Battery Cell 2 Fault',
+                'BATTERY_VOLTAGE_FAULT_3': 'Battery Cell 3 Fault'
+            };
+            return titles[faultType] || faultType;
+        }
+
+        // Get fault unit from type
+        function getFaultUnit(faultType) {
+            if (faultType.includes('TEMPERATURE')) return '°C';
+            if (faultType.includes('VOLTAGE')) return 'V';
+            if (faultType.includes('GAS')) return ' units';
+            return '';
+        }
+
+        // Filter faults
+        function filterFaults(filter) {
+            updateFaultList();
+        }
+
+        // Show fault detail modal
+        function showFaultDetail(faultId) {
+            const fault = systemState.faults.find(f => f.id === faultId);
+            if (!fault) {
+                showNotification('Fault details not found', 'error');
+                return;
+            }
+            
+            const date = new Date(fault.timestamp);
+            const resolvedDate = fault.resolvedAt ? new Date(fault.resolvedAt) : null;
+            
+            elements.faultDetailContent.innerHTML = `
+                <div class="fault-detail-content">
+                    <div class="detail-item">
+                        <label>Fault ID:</label>
+                        <strong>${fault.id || 'N/A'}</strong>
+                    </div>
+                    <div class="detail-item">
+                        <label>Fault Type:</label>
+                        <strong>${getFaultTitle(fault.faultType)}</strong>
+                    </div>
+                    <div class="detail-item">
+                        <label>Description:</label>
+                        <p>${fault.description || 'No description available'}</p>
+                    </div>
+                    ${fault.value ? `
+                    <div class="detail-item">
+                        <label>Measured Value:</label>
+                        <strong>${fault.value} ${getFaultUnit(fault.faultType)}</strong>
+                    </div>
+                    ` : ''}
+                    <div class="detail-item">
+                        <label>Detected At:</label>
+                        <strong>${date.toLocaleString()}</strong>
+                    </div>
+                    ${resolvedDate ? `
+                    <div class="detail-item">
+                        <label>Resolved At:</label>
+                        <strong>${resolvedDate.toLocaleString()}</strong>
+                    </div>
+                    ` : ''}
+                    <div class="detail-item">
+                        <label>Status:</label>
+                        <strong class="${fault.resolved ? 'status-resolved' : 'status-active'}">
+                            ${fault.resolved ? 'Resolved' : 'Active'}
+                        </strong>
+                    </div>
+                </div>
+            `;
+            
+            elements.resolveFaultBtn.dataset.faultId = faultId;
+            elements.resolveFaultBtn.disabled = fault.resolved;
+            elements.modal.classList.add('active');
+        }
+
+        // Resolve current fault
+        function resolveCurrentFault() {
+            const faultId = elements.resolveFaultBtn.dataset.faultId;
+            if (!faultId) {
+                showNotification('No fault selected', 'error');
+                return;
+            }
+            
+            console.log("Resolving fault:", faultId);
+            
+            database.ref(`/fault_log/${faultId}`).update({
+                resolved: true,
+                resolvedAt: new Date().toISOString()
+            })
+            .then(() => {
+                showNotification('Fault marked as resolved', 'success');
+                elements.modal.classList.remove('active');
+                // Reload faults to update the list
+                loadFaults();
+            })
+            .catch(error => {
+                console.error('Error resolving fault:', error);
+                showNotification('Error resolving fault', 'error');
+            });
+        }
+
+        // Update statistics
+        function updateStatistics(data) {
             const now = Date.now();
-            const uptimeMs = now - systemState.startTime;
+            const timeDiff = now - systemState.lastStatsUpdate;
             
-            // Calculate uptime components
-            const hours = Math.floor(uptimeMs / (1000 * 60 * 60));
-            const minutes = Math.floor((uptimeMs % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((uptimeMs % (1000 * 60)) / 1000);
-            
-            elements.uptime.textContent = `${hours}h ${minutes}m ${seconds}s`;
-            
-            // Calculate uptime percentage (based on 24 hours)
-            const uptimePercent = (uptimeMs / (24 * 60 * 60 * 1000)) * 100;
-            elements.uptimeTrend.textContent = `+${uptimePercent.toFixed(1)}%`;
-        }, 1000);
-    }
-
-    // Update element color based on value
-    function updateElementColor(element, value, min, max) {
-        const percentage = Math.min(Math.max((value - min) / (max - min), 0), 1);
-        
-        if (percentage < 0.5) {
-            element.style.color = '#4cc9f0';
-        } else if (percentage < 0.8) {
-            element.style.color = '#f8961e';
-        } else {
-            element.style.color = '#f72585';
+            // Update every 5 seconds
+            if (timeDiff > 5000) {
+                systemState.lastStatsUpdate = now;
+                
+                // Calculate average temperature from live data
+                const irTemp = data.ir_temp_c || 0;
+                const batTemp = data.battery_temp_c || 0;
+                const avgTemp = (irTemp + batTemp) / 2;
+                elements.avgTemp.textContent = avgTemp.toFixed(1);
+                
+                // Update temperature history for chart
+                updateChartData(tempChart, avgTemp);
+                
+                // Calculate system load from live data
+                const systemLoad = data.stats?.system_load || 0;
+                elements.systemLoad.textContent = systemLoad.toFixed(0);
+                
+                // Update load history for chart
+                updateChartData(loadChart, systemLoad);
+                
+                // Update temperature trend
+                updateTrendIndicator(elements.tempTrend, systemState.temperatureHistory, avgTemp, '°C');
+                
+                // Update load trend
+                updateTrendIndicator(elements.loadTrend, systemState.loadHistory, systemLoad, '%');
+                
+                // Store history data
+                systemState.temperatureHistory.push({
+                    timestamp: now,
+                    value: avgTemp
+                });
+                
+                systemState.loadHistory.push({
+                    timestamp: now,
+                    value: systemLoad
+                });
+                
+                // Keep only last 100 data points
+                if (systemState.temperatureHistory.length > 100) {
+                    systemState.temperatureHistory.shift();
+                }
+                if (systemState.loadHistory.length > 100) {
+                    systemState.loadHistory.shift();
+                }
+            }
         }
-    }
 
-    // Show notification
-    function showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `notification ${type}`;
-        notification.innerHTML = `
-            <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
-            <span>${message}</span>
-        `;
-        
-        // Add to body
-        document.body.appendChild(notification);
-        
+        // Update chart data
+        function updateChartData(chart, newValue) {
+            if (!chart) return;
+            
+            if (chart.data.datasets[0].data.length >= 10) {
+                chart.data.datasets[0].data.shift();
+            }
+            chart.data.datasets[0].data.push(newValue);
+            chart.update('none');
+        }
+
+        // Update trend indicator
+        function updateTrendIndicator(element, history, currentValue, unit) {
+            if (history.length < 2) {
+                element.textContent = 'Stable';
+                element.className = 'stat-trend neutral';
+                return;
+            }
+            
+            const prevValue = history[history.length - 1]?.value || 0;
+            const diff = currentValue - prevValue;
+            const percentChange = prevValue > 0 ? (diff / prevValue) * 100 : 0;
+            
+            if (Math.abs(percentChange) < 0.5) {
+                element.textContent = 'Stable';
+                element.className = 'stat-trend neutral';
+            } else if (percentChange > 0) {
+                element.textContent = `+${percentChange.toFixed(1)}%`;
+                element.className = 'stat-trend positive';
+            } else {
+                element.textContent = `${percentChange.toFixed(1)}%`;
+                element.className = 'stat-trend negative';
+            }
+        }
+
+        // Update stats
+        function updateStats() {
+            // Update faults today from live data
+            const faultsToday = systemState.liveData?.stats?.faults_today || 0;
+            elements.faultsToday.textContent = faultsToday;
+            
+            // Update fault chart
+            if (faultsChart) {
+                updateChartData(faultsChart, faultsToday);
+            }
+            
+            // Update fault trend
+            const activeFaults = systemState.faults.filter(f => !f.resolved).length;
+            if (activeFaults > 0) {
+                elements.faultsTrend.textContent = `${activeFaults} active`;
+                elements.faultsTrend.className = 'stat-trend negative';
+            } else {
+                elements.faultsTrend.textContent = 'No active faults';
+                elements.faultsTrend.className = 'stat-trend positive';
+            }
+        }
+
+        // Start uptime counter
+        function startUptimeCounter() {
+            setInterval(() => {
+                const now = Date.now();
+                const uptimeMs = now - systemState.startTime;
+                
+                // Calculate uptime components
+                const hours = Math.floor(uptimeMs / (1000 * 60 * 60));
+                const minutes = Math.floor((uptimeMs % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((uptimeMs % (1000 * 60)) / 1000);
+                
+                elements.uptime.textContent = `${hours}h ${minutes}m ${seconds}s`;
+                
+                // Calculate uptime percentage (based on 24 hours)
+                const uptimePercent = (uptimeMs / (24 * 60 * 60 * 1000)) * 100;
+                elements.uptimeTrend.textContent = `+${uptimePercent.toFixed(1)}%`;
+            }, 1000);
+        }
+
+        // Update element color based on value
+        function updateElementColor(element, value, min, max) {
+            const percentage = Math.min(Math.max((value - min) / (max - min), 0), 1);
+            
+            if (percentage < 0.5) {
+                element.style.color = '#4cc9f0';
+            } else if (percentage < 0.8) {
+                element.style.color = '#f8961e';
+            } else {
+                element.style.color = '#f72585';
+            }
+        }
+
         // Show notification
-        setTimeout(() => notification.classList.add('show'), 10);
-        
-        // Remove after 5 seconds
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => notification.remove(), 300);
-        }, 5000);
-    }
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            // Add to body
+            document.body.appendChild(notification);
+            
+            // Show notification
+            setTimeout(() => notification.classList.add('show'), 10);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+        }
 
-    // Initialize the app when DOM is loaded
-    document.addEventListener('DOMContentLoaded', init);
-</script>
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
