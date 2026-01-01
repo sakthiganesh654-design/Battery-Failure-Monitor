@@ -1519,7 +1519,7 @@
                                     <tr>
                                         <th><i class="fas fa-hashtag"></i> Fault #</th>
                                         <th><i class="fas fa-calendar-alt"></i> Date</th>
-                                        <th><i class="fas fa-clock"></i> Time</th>
+                                        <th><i class="fas fa-clock"></i> Time (IST)</th>
                                         <th><i class="fas fa-exclamation-circle"></i> Type</th>
                                         <th><i class="fas fa-info-circle"></i> Status</th>
                                         <th><i class="fas fa-cog"></i> Actions</th>
@@ -1667,7 +1667,7 @@
             lastStatsUpdate: Date.now(),
             buzzerActive: false,
             liveData: null,
-            currentFaultNumber: 1 // Start fault numbering from 1
+            currentFaultNumber: 1
         };
 
         // Charts
@@ -1801,6 +1801,71 @@
                 name: 'Over Temperature'
             }
         };
+
+        // Helper function to convert to Mumbai time (IST)
+        function toMumbaiTime(date) {
+            if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+                return new Date(); // Return current date if invalid
+            }
+            
+            // Convert to Mumbai time (UTC+5:30)
+            const mumbaiOffset = 5.5 * 60 * 60 * 1000; // 5.5 hours in milliseconds
+            const utcTime = date.getTime() + (date.getTimezoneOffset() * 60 * 1000);
+            return new Date(utcTime + mumbaiOffset);
+        }
+
+        // Format date in Mumbai time
+        function formatMumbaiDate(date) {
+            if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+                return 'N/A';
+            }
+            
+            return date.toLocaleDateString('en-US', {
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        // Format time in Mumbai time
+        function formatMumbaiTime(date) {
+            if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+                return 'N/A';
+            }
+            
+            return date.toLocaleTimeString('en-US', {
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+
+        // Format full date time in Mumbai time
+        function formatMumbaiDateTime(date) {
+            if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+                return 'N/A';
+            }
+            
+            const dateStr = date.toLocaleDateString('en-US', {
+                timeZone: 'Asia/Kolkata',
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            const timeStr = date.toLocaleTimeString('en-US', {
+                timeZone: 'Asia/Kolkata',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+            
+            return `${dateStr} at ${timeStr} IST`;
+        }
 
         // Initialize the application
         function init() {
@@ -1967,8 +2032,11 @@
                             } else {
                                 timestamp = new Date();
                             }
+                            
+                            // Convert to Mumbai time
+                            timestamp = toMumbaiTime(timestamp);
                         } else {
-                            timestamp = new Date();
+                            timestamp = toMumbaiTime(new Date());
                         }
                         
                         // Parse resolvedAt
@@ -1980,6 +2048,11 @@
                                 resolvedAt = isNaN(parsed) ? null : new Date(parsed);
                             } else if (value.resolvedAt && typeof value.resolvedAt === 'object' && value.resolvedAt._seconds) {
                                 resolvedAt = new Date(value.resolvedAt._seconds * 1000);
+                            }
+                            
+                            // Convert to Mumbai time if exists
+                            if (resolvedAt) {
+                                resolvedAt = toMumbaiTime(resolvedAt);
                             }
                         }
                         
@@ -2180,13 +2253,15 @@
         // Update last update time
         function updateLastUpdate() {
             if (systemState.lastUpdate) {
+                const mumbaiTime = toMumbaiTime(systemState.lastUpdate);
                 const timeDiff = Math.floor((new Date() - systemState.lastUpdate) / 1000);
+                
                 if (timeDiff < 60) {
                     elements.lastUpdate.textContent = `Updated: ${timeDiff} seconds ago`;
                 } else if (timeDiff < 3600) {
                     elements.lastUpdate.textContent = `Updated: ${Math.floor(timeDiff / 60)} minutes ago`;
                 } else {
-                    elements.lastUpdate.textContent = `Updated: ${systemState.lastUpdate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+                    elements.lastUpdate.textContent = `Updated: ${formatMumbaiTime(mumbaiTime)} IST`;
                 }
             }
         }
@@ -2226,8 +2301,11 @@
                                 } else {
                                     timestamp = new Date();
                                 }
+                                
+                                // Convert to Mumbai time
+                                timestamp = toMumbaiTime(timestamp);
                             } else {
-                                timestamp = new Date();
+                                timestamp = toMumbaiTime(new Date());
                             }
                             
                             // Parse resolvedAt
@@ -2239,6 +2317,11 @@
                                     resolvedAt = isNaN(parsed) ? null : new Date(parsed);
                                 } else if (value.resolvedAt && typeof value.resolvedAt === 'object' && value.resolvedAt._seconds) {
                                     resolvedAt = new Date(value.resolvedAt._seconds * 1000);
+                                }
+                                
+                                // Convert to Mumbai time if exists
+                                if (resolvedAt) {
+                                    resolvedAt = toMumbaiTime(resolvedAt);
                                 }
                             }
                             
@@ -2336,23 +2419,9 @@
             
             const rowClass = fault.resolved ? 'resolved' : 'active';
             
-            // Format date and time
-            let faultDate = 'N/A';
-            let faultTime = 'N/A';
-            
-            if (fault.timestamp && fault.timestamp instanceof Date && !isNaN(fault.timestamp.getTime())) {
-                faultDate = fault.timestamp.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                });
-                
-                faultTime = fault.timestamp.toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: true
-                });
-            }
+            // Format date and time in Mumbai time
+            const faultDate = formatMumbaiDate(fault.timestamp);
+            const faultTime = formatMumbaiTime(fault.timestamp);
             
             return `
                 <tr class="${rowClass}" data-fault-id="${fault.id}">
@@ -2414,42 +2483,8 @@
                 color: '#f72585'
             };
             
-            let detectedDate = 'N/A';
-            let detectedTime = 'N/A';
-            let resolvedDate = 'Not resolved';
-            let resolvedTime = '';
-            
-            if (fault.timestamp && fault.timestamp instanceof Date && !isNaN(fault.timestamp.getTime())) {
-                detectedDate = fault.timestamp.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-                
-                detectedTime = fault.timestamp.toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: true
-                });
-            }
-            
-            if (fault.resolvedAt && fault.resolvedAt instanceof Date && !isNaN(fault.resolvedAt.getTime())) {
-                resolvedDate = fault.resolvedAt.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-                
-                resolvedTime = fault.resolvedAt.toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: true
-                });
-            }
+            const detectedDateTime = formatMumbaiDateTime(fault.timestamp);
+            const resolvedDateTime = fault.resolvedAt ? formatMumbaiDateTime(fault.resolvedAt) : 'Not resolved';
             
             elements.faultDetailContent.innerHTML = `
                 <div class="fault-detail-content">
@@ -2476,21 +2511,13 @@
                     </div>
                     ` : ''}
                     <div class="detail-item">
-                        <label>Detected Date:</label>
-                        <strong>${detectedDate}</strong>
-                    </div>
-                    <div class="detail-item">
-                        <label>Detected Time:</label>
-                        <strong>${detectedTime}</strong>
+                        <label>Detected Date & Time (IST):</label>
+                        <strong>${detectedDateTime}</strong>
                     </div>
                     ${fault.resolved ? `
                     <div class="detail-item">
-                        <label>Resolved Date:</label>
-                        <strong>${resolvedDate}</strong>
-                    </div>
-                    <div class="detail-item">
-                        <label>Resolved Time:</label>
-                        <strong>${resolvedTime}</strong>
+                        <label>Resolved Date & Time (IST):</label>
+                        <strong>${resolvedDateTime}</strong>
                     </div>
                     ` : ''}
                     <div class="detail-item">
@@ -2688,8 +2715,8 @@
 
         // Update stats
         function updateStats() {
-            // Calculate faults for today
-            const today = new Date();
+            // Calculate faults for today (in Mumbai time)
+            const today = toMumbaiTime(new Date());
             today.setHours(0, 0, 0, 0);
             
             const faultsToday = systemState.faults.filter(fault => {
