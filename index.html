@@ -218,7 +218,7 @@
 
         .battery-summary {
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             padding-top: 20px;
             border-top: 1px solid var(--gray-light);
         }
@@ -235,7 +235,7 @@
         }
 
         .summary-item strong {
-            font-size: 1.4rem;
+            font-size: 1.8rem;
             color: var(--dark);
         }
 
@@ -920,12 +920,8 @@
                         </div>
                         <div class="battery-summary">
                             <div class="summary-item">
-                                <span>Total Voltage:</span>
+                                <span>Total Voltage</span>
                                 <strong id="totalVoltage">-- V</strong>
-                            </div>
-                            <div class="summary-item">
-                                <span>Battery Health:</span>
-                                <strong id="batteryHealth">-- %</strong>
                             </div>
                         </div>
                     </div>
@@ -1149,7 +1145,6 @@
             progress2: document.getElementById('progress2'),
             progress3: document.getElementById('progress3'),
             totalVoltage: document.getElementById('totalVoltage'),
-            batteryHealth: document.getElementById('batteryHealth'),
             
             // Temperature elements
             irTemp: document.getElementById('irTemp'),
@@ -1301,11 +1296,6 @@
             // Update total voltage
             const totalV = bat1 + bat2 + bat3;
             elements.totalVoltage.textContent = totalV.toFixed(2) + ' V';
-            
-            // Calculate battery health (simplified)
-            const avgVoltage = (bat1 + bat2 + bat3) / 3;
-            const health = Math.min(Math.max((avgVoltage - 3.0) / (4.2 - 3.0) * 100, 0), 100);
-            elements.batteryHealth.textContent = health.toFixed(0) + ' %';
             
             // Change color based on voltage
             updateElementColor(elements.cell1, bat1, 3.0, 4.25);
@@ -1583,7 +1573,6 @@
             elements.faultsToday.textContent = faultsToday;
             
             // Update average temperature (simplified)
-            // In real implementation, you would calculate from historical data
             elements.avgTemp.textContent = '-- °C';
             
             // Update system load (simplified)
